@@ -1,0 +1,37 @@
+# Various IDEs and Editors
+.vscode/
+.idea/
+**/*~
+
+# Mac OSX temporary files
+.DS_Store
+**/.DS_Store
+
+# dfx temporary files
+.dfx/
+
+# generated files
+**/declarations/
+
+# rust
+target/
+
+# frontend code
+node_modules/
+dist/
+.svelte-kit/
+
+# environment variables
+.env
+
+/.mops/
+/.github/*
+!/.github/skills/
+!/.github/skills/**
+
+# ==============================================================================
+# AI Skills Globais do icp-skills (sincronizadas via scripts/sync-skills.sh)
+# ==============================================================================
+.ai/icp/
+.ai/skills-manifest.json
+.junie/skills/icp-*/

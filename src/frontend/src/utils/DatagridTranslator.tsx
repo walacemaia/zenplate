@@ -1,0 +1,53 @@
+export const datagridTranslator = (t: (key: string) => string) => ({
+  noRowsLabel: t('noRowsLabel'),
+  noResultsOverlayLabel: t('noResultsOverlayLabel'),
+
+  toolbarColumns: t('toolbarColumns'),
+  toolbarFilters: t('toolbarFilters'),
+  toolbarDensity: t('toolbarDensity'),
+  toolbarDensityCompact: t('toolbarDensityCompact'),
+  toolbarDensityStandard: t('toolbarDensityStandard'),
+  toolbarDensityComfortable: t('toolbarDensityComfortable'),
+  toolbarExport: t('toolbarExport'),
+  toolbarExportCSV: t('toolbarExportCSV'),
+  toolbarExportPrint: t('toolbarExportPrint'),
+  toolbarExportExcel: t('toolbarExportExcel'),
+
+  filterOperatorContains: t('filterOperatorContains'),
+  filterOperatorEquals: t('filterOperatorEquals'),
+  filterOperatorStartsWith: t('filterOperatorStartsWith'),
+  filterOperatorEndsWith: t('filterOperatorEndsWith'),
+  filterOperatorIs: t('filterOperatorIs'),
+  filterOperatorNot: t('filterOperatorNot'),
+  filterOperatorAfter: t('filterOperatorAfter'),
+  filterOperatorOnOrAfter: t('filterOperatorOnOrAfter'),
+  filterOperatorBefore: t('filterOperatorBefore'),
+  filterOperatorOnOrBefore: t('filterOperatorOnOrBefore'),
+  filterOperatorIsEmpty: t('filterOperatorIsEmpty'),
+  filterOperatorIsNotEmpty: t('filterOperatorIsNotEmpty'),
+  filterOperatorIsAnyOf: t('filterOperatorIsAnyOf'),
+
+  filterPanelAddFilter: t('filterPanelAddFilter'),
+  filterPanelDeleteIconLabel: t('filterPanelDeleteIconLabel'),
+  filterPanelLogicOperator: t('filterPanelLogicOperator'),
+  filterPanelOperator: t('filterPanelOperator'),
+  filterPanelOperatorAnd: t('filterPanelOperatorAnd'),
+  filterPanelOperatorOr: t('filterPanelOperatorOr'),
+  filterPanelColumns: t('filterPanelColumns'),
+  filterPanelInputLabel: t('filterPanelInputLabel'),
+  filterPanelInputPlaceholder: t('filterPanelInputPlaceholder'),
+
+  columnMenuSortAsc: t('columnMenuSortAsc'),
+  columnMenuSortDesc: t('columnMenuSortDesc'),
+  columnMenuUnsort: t('columnMenuUnsort'),
+  columnMenuFilter: t('columnMenuFilter'),
+  columnMenuHideColumn: t('columnMenuHideColumn'),
+  columnMenuManageColumns: t('columnMenuManageColumns'),
+
+  checkboxSelectionHeaderName: t('checkboxSelectionHeaderName'),
+
+  // Estes não estáo funcionando
+  columnMenuShowColumns: t('columnMenuShowColumns'),
+  columnMenuResetColumns: t('columnMenuResetColumns'),
+  footerRowsPerPageLabel: t('footerRowsPerPageLabel'),
+});

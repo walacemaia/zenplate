@@ -1,0 +1,35 @@
+{
+  "name": "icp_app",
+  "author": "Walace Maia",
+  "version": "0.1.0-SNAPSHOT",
+  "description": "Template base do ecossistema icp-workspace: backend Motoko sobre cached-db + frontend React/MUI, sem conteudo de dominio de produto. Gerado a partir do Zenquest via icp-skills (skill gerar-novo-projeto.md).",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": "20.x",
+    "npm": ">=7.0.0"
+  },
+  "scripts": {
+    "build": "npm run build --workspaces --if-present",
+    "prebuild": "npm run prebuild --workspaces --if-present",
+    "pretest": "npm run prebuild --workspaces --if-present",
+    "start": "npm start --workspaces --if-present",
+    "test": "npm test --workspaces --if-present",
+    "clean": "dfx stop && dfx start --clean --background",
+    "start:safe": "bash ./scripts/dfx-safe-start.sh",
+    "deploy:safe": "bash ./scripts/dfx-safe-deploy.sh",
+    "deploy:safe:backend": "bash ./scripts/dfx-safe-deploy.sh icp_app_backend",
+    "dev:test-integrity": "dfx canister call icp_app_backend runDevReferentialIntegrityAndIndexesTest '()'"
+  },
+  "workspaces": [
+    "src/frontend"
+  ],
+  "resolutions": {
+    "react": "18.3.1",
+    "react-dom": "18.3.1"
+  },
+  "dependencies": {
+    "jszip": "^3.10.1",
+    "remark-gfm": "^4.0.1"
+  }
+}
