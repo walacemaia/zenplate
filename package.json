@@ -18,8 +18,7 @@
     "clean": "dfx stop && dfx start --clean --background",
     "start:safe": "bash ./scripts/dfx-safe-start.sh",
     "deploy:safe": "bash ./scripts/dfx-safe-deploy.sh",
-    "deploy:safe:backend": "bash ./scripts/dfx-safe-deploy.sh icp_app_backend",
-    "dev:test-integrity": "dfx canister call icp_app_backend runDevReferentialIntegrityAndIndexesTest '()'"
+    "deploy:safe:backend": "bash ./scripts/dfx-safe-deploy.sh icp_app_backend"
   },
   "workspaces": [
     "src/frontend"
