@@ -3,6 +3,8 @@ import TableRowsIcon from '@mui/icons-material/TableRows';
 import ViewAgendaIcon from '@mui/icons-material/ViewAgenda';
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 
+import { useIcpContext } from 'src/auth/context/icp/icp-context-provider';
+
 import type { DataViewMode } from './use-data-view-mode';
 
 type DataViewModeToggleProps = {
@@ -11,6 +13,10 @@ type DataViewModeToggleProps = {
 };
 
 export function DataViewModeToggle({ mode, onChange }: DataViewModeToggleProps) {
+  const { translations: t } = useIcpContext();
+  const gridLabel = t('dataViewModeGrid') || 'Grid';
+  const cardsLabel = t('dataViewModeCards') || 'Cards';
+
   return (
     <ToggleButtonGroup
       size="small"
@@ -21,16 +27,16 @@ export function DataViewModeToggle({ mode, onChange }: DataViewModeToggleProps) 
           onChange(value);
         }
       }}
-      aria-label="Modo de visualizacao"
+      aria-label={t('select') || 'Select'}
       sx={{ alignSelf: { xs: 'stretch', sm: 'center' } }}
     >
-      <ToggleButton value="grid" aria-label="Visualizacao em grade">
+      <ToggleButton value="grid" aria-label={gridLabel}>
         <TableRowsIcon sx={{ mr: 0.75 }} fontSize="small" />
-        Grade
+        {gridLabel}
       </ToggleButton>
-      <ToggleButton value="cards" aria-label="Visualizacao em cards">
+      <ToggleButton value="cards" aria-label={cardsLabel}>
         <ViewAgendaIcon sx={{ mr: 0.75 }} fontSize="small" />
-        Cards
+        {cardsLabel}
       </ToggleButton>
     </ToggleButtonGroup>
   );
