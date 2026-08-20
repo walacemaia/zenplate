@@ -1,20 +1,23 @@
-import type { ActorSubclass, ActorConfig, Agent } from '@dfinity/agent';
+import type { ActorSubclass, ActorConfig, Agent } from '@icp-sdk/core/agent';
 import type { _SERVICE } from '@backend/icp_app_backend.did';
 
-import { Actor } from '@dfinity/agent';
+import { Actor } from '@icp-sdk/core/agent';
+import { safeGetCanisterEnv } from '@icp-sdk/core/agent/canister-env';
 
-import { idlFactory } from '../../../declarations/icp_app_backend/icp_app_backend.did.js';
+import { idlFactory } from '../generated/declarations/icp_app_backend.did.js';
 
-// Wrapper local para o backend gerado pelo dfx.
-//
-// O `src/declarations/icp_app_backend/index.js` gerado pelo `dfx` instancia um
-// actor com `HttpAgent` default (mainnet) e chama `fetchRootKey()` no topo do
-// módulo. Isso dispara uma requisição para `icp-api.io` no simples `import`,
-// gerando um `ProtocolError 400 canister id not resolved` no console durante
-// dev/local. Consumimos apenas `idlFactory` (arquivo puro) e reexpomos
-// `canisterId`/`createActor` daqui, evitando o side-effect.
+// Wrapper local para o backend, mantido por escolha do projeto em vez da
+// classe gerada pelo `@icp-sdk/bindgen` (que converte variants/enums do
+// Candid para tipos TS próprios — adotar exigiria revisar os 4 arquivos de
+// `icpadapters/` e testar todas as telas que chamam o backend). Consumimos
+// só `idlFactory`/`_SERVICE` (arquivos puros do bindgen) e expomos
+// `createActor` estrito, que sempre exige um `Agent` já construído (nunca
+// aceita `agentOptions` — força quem chama a decidir host/root key/identidade
+// via `createIcpAgent`, evitando duplicar essa lógica em mais de um lugar).
 
-export const canisterId = process.env.CANISTER_ID_ICP_APP_BACKEND as string;
+export const canisterId = safeGetCanisterEnv<{ readonly ['PUBLIC_CANISTER_ID:icp_app_backend']: string }>()?.[
+  'PUBLIC_CANISTER_ID:icp_app_backend'
+] as string;
 
 export type CreateActorOptions = {
   agent: Agent;

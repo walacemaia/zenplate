@@ -1,7 +1,7 @@
 import React from 'react';
 import JSZip from 'jszip';
 
-import type { ActorSubclass } from '@dfinity/agent';
+import type { ActorSubclass } from '@icp-sdk/core/agent';
 import type {
   _SERVICE,
   BackupChunk,
@@ -797,7 +797,7 @@ export default function Page() {
             <Alert severity="info" sx={{ mb: 2 }}>
               As operações de backup e restore exigem que o seu Principal esteja registrado como{' '}
               <strong>controller do canister</strong> (via{' '}
-              <code>dfx canister update-settings --add-controller</code>). O papel{' '}
+              <code>icp canister settings update &lt;canister&gt; --add-controller</code>). O papel{' '}
               <code>#admin</code> de domínio não é suficiente, porque o restore pode limpar o
               próprio profile do usuário.
             </Alert>

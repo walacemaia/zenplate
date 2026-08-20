@@ -1,7 +1,7 @@
 {
   "compilerOptions": {
     "paths": {
-      "@backend/*": ["../declarations/icp_app_backend/*"]
+      "@backend/*": ["./src/generated/declarations/*"]
     },
 
     /* ICP */

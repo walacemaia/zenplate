@@ -105,7 +105,7 @@ persistent actor icp_app_backend {
   /// funcionar mesmo quando o `profileDAO` esta vazio ou em transicao
   /// durante uma restauracao. Diferentemente de `checkAdminAuthorization`,
   /// nao aceita admins de dominio: privilegio precisa estar registrado
-  /// nas settings do canister (`dfx canister update-settings --add-controller`).
+  /// nas settings do canister (`icp canister settings update <canister> --add-controller`).
   private func checkControllerAuthorization(caller : Principal) {
     if (not Prim.isController(caller)) {
       Runtime.trap(

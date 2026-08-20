@@ -1,34 +1,27 @@
-import type { Identity } from '@dfinity/agent';
+import type { Identity } from '@icp-sdk/core/agent';
 
-import { HttpAgent } from '@dfinity/agent';
+import { HttpAgent } from '@icp-sdk/core/agent';
+import { safeGetCanisterEnv } from '@icp-sdk/core/agent/canister-env';
 
-// Ponto único de host + fetchRootKey para toda instanciação de actor.
+// Ponto único de host + root key para toda instanciação de actor.
 //
 // Duplicar esta lógica em mais de um consumidor já causou, em outro projeto do
-// ecossistema, uma root key buscada duas vezes por criação de actor (um
-// consumidor com guard incompleto repassando o agent para o `createActor`
-// gerado pelo dfx, que também chama `fetchRootKey` internamente). Todo call
-// site deve usar `createIcpAgent`, nunca reimplementar host/guard por conta própria.
+// ecossistema, uma root key buscada duas vezes por criação de actor. Todo call
+// site deve usar `createIcpAgent`, nunca reimplementar host/root key por conta própria.
 //
-// Mitigação temporária: a skill oficial `internet-identity` recomenda eliminar
-// `fetchRootKey()` via cookie `ic_env` + `safeGetCanisterEnv()` (`@icp-sdk/core`),
-// mecanismo hoje amarrado a `icp-cli`/`icp.yaml`. Revisar quando migrar de `dfx`.
-
-export const isProduction = process.env.DFX_NETWORK === 'ic';
-
-export const IC_HOST = isProduction ? 'https://icp-api.io' : 'http://127.0.0.1:4943';
-
+// A root key vem do cookie `ic_env` (servido pelo canister de assets em
+// produção e simulado pelo dev server do Vite em local — ver
+// `getDevServerConfig()` em vite.config.ts), nunca de `fetchRootKey()` em
+// runtime: essa chamada busca a root key do próprio replica a cada boot, o
+// que é um vetor de MITM em mainnet. `host` nunca é hardcoded — usar sempre
+// `window.location.origin`, que funciona tanto no canister de assets em
+// produção quanto no proxy `/api` do Vite em local (ver vite.config.ts).
 export async function createIcpAgent(identity?: Identity): Promise<HttpAgent> {
-  const agent = identity
-    ? await HttpAgent.create({ host: IC_HOST, identity })
-    : await HttpAgent.create({ host: IC_HOST });
+  const canisterEnv = safeGetCanisterEnv();
 
-  if (!isProduction) {
-    if (process.env.DFX_NETWORK === 'ic') {
-      throw new Error('Refusing to fetch root key on mainnet');
-    }
-    await agent.fetchRootKey();
-  }
-
-  return agent;
+  return HttpAgent.create({
+    host: window.location.origin,
+    identity,
+    rootKey: canisterEnv?.IC_ROOT_KEY,
+  });
 }
