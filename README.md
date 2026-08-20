@@ -1,8 +1,8 @@
-# icp-template
+# zenplate
 
 Template base para novos projetos do ecossistema `icp-workspace`: backend Motoko sobre a biblioteca [`cached-db`](https://github.com/walacemaia/cacheddb) (padrão DAO/Service/`XxxxDatabase`/`admin`) + frontend React/MUI (formulários, grids, autenticação via Internet Identity), sem nenhum conteúdo de domínio de produto.
 
-Extraído do [Zenquest](https://github.com/walacemaia/zenquest) — aplicação de referência do ecossistema — removendo o conteúdo de domínio de produto (quiz/exame/plano de estudo) e mantendo só a infraestrutura genérica. Essa extração foi um trabalho pontual, não é uma relação de manutenção contínua entre os dois repositórios: `icp-template` não é atualizado automaticamente quando o Zenquest evolui.
+Extraído do [Zenquest](https://github.com/walacemaia/zenquest) — aplicação de referência do ecossistema — removendo o conteúdo de domínio de produto (quiz/exame/plano de estudo) e mantendo só a infraestrutura genérica. Essa extração foi um trabalho pontual, não é uma relação de manutenção contínua entre os dois repositórios: `zenplate` não é atualizado automaticamente quando o Zenquest evolui.
 
 ## O que este template já traz
 
@@ -18,4 +18,4 @@ Extraído do [Zenquest](https://github.com/walacemaia/zenquest) — aplicação 
 
 ## Como usar
 
-Para criar um projeto novo a partir deste template, ver o skill [`criar-aplicacao-do-template.md`](https://github.com/walacemaia/icp-skills/blob/main/skills/criar-aplicacao-do-template.md) do repositório [`icp-skills`](https://github.com/walacemaia/icp-skills): rename mecânico de identidade (`IcpApp`/`icp_app`/`ICP_APP` → o nome do projeto novo), seguido de `mops install`, `npm install`, `dfx deploy` e `sync-skills` para popular `.ai/icp/`.
+Para criar um projeto novo a partir deste template, ver o skill [`criar-aplicacao-do-template.md`](https://github.com/walacemaia/zen-skills/blob/main/skills/criar-aplicacao-do-template.md) do repositório [`zen-skills`](https://github.com/walacemaia/zen-skills): rename mecânico de identidade (`IcpApp`/`icp_app`/`ICP_APP` → o nome do projeto novo), seguido de `mops install`, `npm install`, `dfx deploy` e `sync-skills` para popular `.ai/zen/`.
