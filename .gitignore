@@ -30,8 +30,10 @@ dist/
 !/.github/skills/**
 
 # ==============================================================================
-# AI Skills Globais do icp-skills (sincronizadas via scripts/sync-skills.sh)
+# AI Skills Globais do zen-skills (sincronizadas via scripts/sync-skills.sh)
 # ==============================================================================
-.ai/icp/
+.ai/zen/
 .ai/skills-manifest.json
-.junie/skills/icp-*/
+.junie/skills/zen-*/
+.junie/skills/icp-skills-oficiais/
+.claude/commands/zen/
