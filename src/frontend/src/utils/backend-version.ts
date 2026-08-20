@@ -1,7 +1,7 @@
-import { HttpAgent } from '@dfinity/agent';
 import type { _SERVICE } from '@backend/icp_app_backend.did';
 
-import { canisterId, createActor } from '../../../declarations/icp_app_backend';
+import { createIcpAgent } from 'src/lib/icp-agent';
+import { canisterId, createActor } from 'src/lib/icp-app-backend-client';
 import {
   BACKEND_VERSION_KEY,
   BACKEND_VERSION_RELOAD_KEY,
@@ -26,14 +26,7 @@ export async function getBackendVersion(
       return version.toString();
     }
 
-    const isProduction = process.env.DFX_NETWORK === 'ic';
-    const host = isProduction ? 'https://icp-api.io' : 'http://127.0.0.1:4943';
-    const agent = await HttpAgent.create({ host });
-
-    if (!isProduction) {
-      await agent.fetchRootKey();
-    }
-
+    const agent = await createIcpAgent();
     const actor = createActor(canisterId, { agent });
     const version = await actor.getVersion();
     return version.toString();

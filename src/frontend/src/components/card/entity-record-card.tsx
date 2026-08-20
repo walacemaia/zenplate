@@ -120,7 +120,7 @@ export default function EntityRecordCard({
         </Typography>
 
         {subtitle && (
-          <Typography variant="body2" color="text.secondary" sx={{ mt: 0.25 }}>
+          <Typography component="div" variant="body2" color="text.secondary" sx={{ mt: 0.25 }}>
             {subtitle}
           </Typography>
         )}

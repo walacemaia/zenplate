@@ -1,3 +1,6 @@
 [dependencies]
-core = "1.0.0"
 cacheddb = "../cacheddb/src/"
+core = "2.6.1"
+
+[toolchain]
+moc = "1.13.0"

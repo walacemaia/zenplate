@@ -10,6 +10,13 @@ cleanup() {
 }
 trap cleanup EXIT
 
+# Alinha o dfx local com o moc gerenciado pelo mops. Necessário quando o
+# projeto usa `core >= 2.6.1` (via `mops.toml`) — o `moc` empacotado pelo dfx
+# 0.29.2 (0.16.2) trava a compilação.
+if [[ -z "${DFX_MOC_PATH:-}" && -x "$HOME/.cache/mops/moc/1.13.0/moc" ]]; then
+  export DFX_MOC_PATH="$HOME/.cache/mops/moc/1.13.0/moc"
+fi
+
 print_time_context() {
   echo "[info] local UTC: $(date -u '+%Y-%m-%d %H:%M:%S %Z (%s)')"
   if command -v timedatectl >/dev/null 2>&1; then

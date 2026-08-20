@@ -2,7 +2,6 @@ import type { AuthContextValue } from 'src/auth/types';
 import type { _SERVICE } from '@backend/icp_app_backend.did';
 import type { Identity, ActorSubclass } from '@dfinity/agent';
 
-import { HttpAgent } from '@dfinity/agent';
 import { AuthClient } from '@icp-sdk/auth/client';
 import React, { useState, useEffect, useContext, createContext } from 'react';
 
@@ -15,7 +14,8 @@ import { paths } from 'src/routes/paths';
 import { tsToIcp, BLANK_PROFILE, type ProfileType } from 'src/icpadapters/ProfileAdapter';
 
 import { SimpleProfileForm } from './simple-profile-form';
-import { canisterId, createActor } from '../../../../../declarations/icp_app_backend';
+import { createIcpAgent } from '../../../lib/icp-agent';
+import { canisterId, createActor } from '../../../lib/icp-app-backend-client';
 
 const AuthContext = createContext<any>(null);
 
@@ -165,32 +165,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
    * @returns o ator criado.
    */
   async function createActorWithAuth(id?: Identity): Promise<ActorSubclass<_SERVICE>> {
-    // Define o host com base no ambiente
-    const isProduction = process.env.DFX_NETWORK === 'ic';
-
-    // Without personalized domain
-    // const host = isProduction ? 'https://icp0.io' : 'http://127.0.0.1:4943';
-
-    // With personalized domain
-    const host = isProduction ? 'https://icp-api.io' : 'http://127.0.0.1:4943';
-
-    console.log('Produção = ' + isProduction);
-    console.log('Host = ' + host);
-
-    let agent: HttpAgent;
-    if (id) {
-      console.log('Creating actor with id: ', id);
-      agent = await HttpAgent.create({ host, identity: id });
-      //      new HttpAgent({ host, identity: id });
-    } else {
-      console.log('Creating actor without id');
-      agent = await HttpAgent.create({ host });
-    }
-
-    // Para desenvolvimento: obtém o root key (necessário na réplica local)
-    if (!isProduction) {
-      await agent.fetchRootKey();
-    }
+    const agent = await createIcpAgent(id);
     return createActor(canisterId, { agent });
   }
 
