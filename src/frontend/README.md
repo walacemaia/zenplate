@@ -1,3 +1,5 @@
+> **Nota histórica**: este arquivo documenta a fusão original entre o template Minimal UI e o template ICP (época em que o projeto ainda usava `dfx`). Os blocos de código abaixo (`dfx generate`, `@dfinity/*`, proxy na porta `4943`, etc.) são um registro de como essa fusão foi feita, **não** refletem a configuração atual — o projeto migrou para `icp-cli`/`@icp-sdk/core` (ver `README.md` da raiz e a skill `migracao-dfx-para-icp-cli.md` do `zen-skills`).
+
 ## Prerequisites
 
 - Node.js 20.x (Recommended)

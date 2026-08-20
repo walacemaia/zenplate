@@ -6,7 +6,7 @@
   "private": true,
   "type": "module",
   "engines": {
-    "node": "20.x",
+    "node": ">=20.0.0",
     "npm": ">=7.0.0"
   },
   "scripts": {
@@ -15,10 +15,10 @@
     "pretest": "npm run prebuild --workspaces --if-present",
     "start": "npm start --workspaces --if-present",
     "test": "npm test --workspaces --if-present",
-    "clean": "dfx stop && dfx start --clean --background",
-    "start:safe": "bash ./scripts/dfx-safe-start.sh",
-    "deploy:safe": "bash ./scripts/dfx-safe-deploy.sh",
-    "deploy:safe:backend": "bash ./scripts/dfx-safe-deploy.sh icp_app_backend"
+    "clean": "icp network stop; rm -rf .icp/cache && icp network start -d",
+    "start:safe": "icp network start -d",
+    "deploy:safe": "icp deploy",
+    "deploy:safe:backend": "icp deploy icp_app_backend"
   },
   "workspaces": [
     "src/frontend"

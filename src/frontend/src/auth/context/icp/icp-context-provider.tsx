@@ -1,6 +1,6 @@
 import type { AuthContextValue } from 'src/auth/types';
 import type { _SERVICE } from '@backend/icp_app_backend.did';
-import type { Identity, ActorSubclass } from '@dfinity/agent';
+import type { Identity, ActorSubclass } from '@icp-sdk/core/agent';
 
 import { AuthClient } from '@icp-sdk/auth/client';
 import React, { useState, useEffect, useContext, createContext } from 'react';
@@ -56,22 +56,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     checkAuthenticated();
   }, []);
 
-  async function getAuthClient() {
+  function getAuthClient(): AuthClient {
     if (authClient == null) {
+      // Calcula posição centralizada para a janela de login. `identityProvider`
+      // e `windowOpenerFeatures` agora pertencem ao construtor do AuthClient
+      // (não mais a `login`/`signIn`) — calculados uma vez, na montagem.
+      const width = 500;
+      const height = 650;
+      const left = window.screenX + (window.outerWidth - width) / 2;
+      const top = window.screenY + (window.outerHeight - height) / 2;
+
       // O IdleManager padrao do @icp-sdk/auth desloga o usuario apos
       // 10 min de inatividade (mouse/teclado/touch) e ainda chama
       // window.location.reload(), o que quebra o "lembrar de mim" e torna
       // a sessao de 8h/30d inconsistente. Aqui desativamos o idle para que
       // a duracao da sessao seja governada exclusivamente por maxTimeToLive.
-      const client = await AuthClient.create({
+      const client = new AuthClient({
+        identityProvider: identityProvider(),
+        windowOpenerFeatures: `toolbar=0,location=0,menubar=0,width=${width},height=${height},left=${left},top=${top}`,
         idleOptions: {
           disableIdle: true,
           disableDefaultIdleCallback: true,
         },
       });
-      if (client == null) {
-        throw new Error('AuthClient not created in ICP');
-      }
       setAuthClient(client);
       return client;
     }
@@ -80,10 +87,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   async function checkAuthenticated() {
     console.log('Checking ICP authentication...');
-    const client = await getAuthClient();
-    if (await client.isAuthenticated()) {
+    const client = getAuthClient();
+    if (client.isAuthenticated()) {
       console.log('Authenticated in ICP');
-      updateClient(client);
+      await updateClient(client);
     } else {
       console.log('Not authenticated in ICP');
       setLoading(false);
@@ -98,7 +105,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
    * @param client informação de autenticação a ser usada para atualizar o client.
    */
   async function updateClient(client: AuthClient) {
-    const id = client.getIdentity();
+    const id = await client.getIdentity();
     setIdentity(id);
     setAuthenticated(true);
     const actor = await createActorWithAuth(id);
@@ -113,29 +120,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
    * Realiza o login com o Internet Identity, atualizando o client em caso de sucesso.
    */
   async function login(options: LoginOptions = {}) {
-    const client = await getAuthClient();
-
-    // Calcula posição centralizada para a janela de login
-    const width = 500;
-    const height = 650;
-    const left = window.screenX + (window.outerWidth - width) / 2;
-    const top = window.screenY + (window.outerHeight - height) / 2;
+    const client = getAuthClient();
     const maxTimeToLive = options.rememberMe
       ? SESSION_DURATION_NS.rememberMe
       : SESSION_DURATION_NS.standard;
 
-    await client.login({
-      identityProvider: identityProvider(),
-      maxTimeToLive,
-      windowOpenerFeatures: `toolbar=0,location=0,menubar=0,width=${width},height=${height},left=${left},top=${top}`,
-      onSuccess: async () => {
-        console.log('Authentication Successful');
-        await updateClient(client);
-        // Redireciona para /dashboard/home após login
-        window.location.href = paths.dashboard.home;
-      },
-      onError: (err) => console.error('Login Failed: ', err),
-    });
+    try {
+      await client.signIn({ maxTimeToLive });
+      console.log('Authentication Successful');
+      await updateClient(client);
+      // Redireciona para /dashboard/home após login
+      window.location.href = paths.dashboard.home;
+    } catch (err) {
+      console.error('Login Failed: ', err);
+    }
   }
 
   /**
@@ -143,7 +141,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
    */
   async function logout() {
     if (authClient) {
-      await authClient.logout();
+      await authClient.signOut();
     }
     resetAuth();
   }
@@ -169,27 +167,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return createActor(canisterId, { agent });
   }
 
-  // /**
-  //  * @returns o provedor de identidade adequado ao ambiente de execução.
-  //  */
-  // const identityProvider = () => {
-  //   if (process.env.DFX_NETWORK === 'local') {
-  //     return `http://${process.env.CANISTER_ID_INTERNET_IDENTITY}.localhost:4943`;
-  //   } else if (process.env.DFX_NETWORK === 'ic') {
-  //     return 'https://identity.ic0.app';
-  //   } else {
-  //     return `https://${process.env.CANISTER_ID_INTERNET_IDENTITY}.dfinity.network`;
-  //   }
-  // };
-  const identityProvider = (): string => {
-    // Local: usa o II local (DFX)
-    if (process.env.DFX_NETWORK === 'local') {
-      return `http://${process.env.CANISTER_ID_INTERNET_IDENTITY}.localhost:4943`;
-    }
-    // Produção / outros ambientes: força o II 2.0 (id.ai)
-    // Isso cobre 'ic' e também 'staging'/'production' customizados.
-    return 'https://id.ai/authorize';
-  };
+  /**
+   * @returns o provedor de identidade adequado ao ambiente de execução.
+   */
+  const identityProvider = (): string =>
+    // Sempre id.ai real (local e produção) — decisão deliberada após
+    // confirmar que o Internet Identity local do icp-cli (`ii: true`) fala
+    // um protocolo postMessage incompatível com o handshake ICRC-29 do
+    // @icp-sdk/auth atual ("Channel was closed before a response was
+    // received", reproduzido de forma consistente). A rede local confia nas
+    // assinaturas da mainnet (icp-cli >= 0.2.4), então a delegação do id.ai
+    // real valida normalmente contra o canister local. Trade-off aceito: dev
+    // local exige internet. Ver plano de migração, Fase 3, para revisitar se
+    // o II local do icp-cli for atualizado no futuro.
+    'https://id.ai/authorize';
 
   function getAuthContextValue(): IcpAuthContextValue {
     return {

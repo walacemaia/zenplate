@@ -1,3 +1,5 @@
+> **Nota histórica**: registro das duas configurações originais (ICP/`dfx` e Minimal) fundidas em `vite.config.ts`, de antes da migração para `icp-cli`. Não reflete a configuração atual.
+
 ## Configuração original do ICP
 
 ```

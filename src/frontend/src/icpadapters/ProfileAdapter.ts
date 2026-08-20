@@ -1,6 +1,6 @@
 import type { Profile } from '@backend/icp_app_backend.did';
 
-import { Principal } from '@dfinity/principal';
+import { Principal } from '@icp-sdk/core/principal';
 
 import { icpOpt, tsNullable } from 'src/icpadapters/IcpAdapter';
 

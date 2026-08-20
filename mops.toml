@@ -4,3 +4,6 @@ core = "2.6.1"
 
 [toolchain]
 moc = "1.13.0"
+
+[canisters]
+icp_app_backend = "src/backend/main.mo"

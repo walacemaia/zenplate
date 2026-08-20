@@ -1,0 +1,25 @@
+# yaml-language-server: $schema=https://github.com/dfinity/icp-cli/raw/refs/tags/v1.3.0/docs/schemas/icp-yaml-schema.json
+
+canisters:
+  - name: icp_app_backend
+    recipe:
+      type: "@dfinity/motoko@v5.1.0"
+
+  - name: icp_app_frontend
+    recipe:
+      type: "@dfinity/static-site@v0.3.3"
+      configuration:
+        build:
+          - npm install
+          - npm run build --workspace=src/frontend
+        dir: src/frontend/dist
+
+networks:
+  - name: local
+    mode: managed
+    # `ii: true` (Internet Identity local) foi testado e removido: o II
+    # empacotado por este icp-cli fala um protocolo postMessage incompatível
+    # com o handshake ICRC-29 do @icp-sdk/auth atual. O app aponta sempre
+    # para o id.ai real (ver src/frontend/.../icp-context-provider.tsx) — a
+    # rede local confia na assinatura da mainnet, então a delegação real
+    # valida normalmente contra os canisters locais.
