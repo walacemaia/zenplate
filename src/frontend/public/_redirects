@@ -1,0 +1,2 @@
+# Single-page-app fallback: serve the shell for any unmatched path (a rewrite, status 200)
+/*               /index.html      200
