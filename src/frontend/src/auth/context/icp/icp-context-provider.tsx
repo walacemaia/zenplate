@@ -3,7 +3,7 @@ import type { _SERVICE } from '@backend/icp_app_backend.did';
 import type { Identity, ActorSubclass } from '@icp-sdk/core/agent';
 
 import { AuthClient } from '@icp-sdk/auth/client';
-import React, { useState, useEffect, useContext, createContext } from 'react';
+import React, { useRef, useState, useEffect, useContext, createContext } from 'react';
 
 import Dialog from '@mui/material/Dialog';
 import DialogTitle from '@mui/material/DialogTitle';
@@ -49,6 +49,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [mustCreateProfile, setMustCreateProfile] = useState(false);
   const [pendingProfile, setPendingProfile] = useState<ProfileType | null>(null);
 
+  // Guard single-flight: React 18 StrictMode dispara useEffect([]) duas vezes em dev.
+  const checkAuthInFlight = useRef(false);
+
   /**
    * Na carga das páginas, cria o AuthClient e verifica se o usuário está autenticado.
    */
@@ -86,17 +89,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }
 
   async function checkAuthenticated() {
-    console.log('Checking ICP authentication...');
-    const client = getAuthClient();
-    if (client.isAuthenticated()) {
-      console.log('Authenticated in ICP');
-      await updateClient(client);
-    } else {
-      console.log('Not authenticated in ICP');
-      setLoading(false);
-    }
-    if (Object.keys(translations).length === 0) {
-      loadTranslations();
+    if (checkAuthInFlight.current) return;
+    checkAuthInFlight.current = true;
+    try {
+      console.log('Checking ICP authentication...');
+      const client = getAuthClient();
+      if (client.isAuthenticated()) {
+        console.log('Authenticated in ICP');
+        await updateClient(client);
+      } else {
+        console.log('Not authenticated in ICP');
+        // Fetch anônimo só quando de fato não autenticado — o ramo autenticado
+        // já carrega traduções dentro de updateClient.
+        const anonymousActor = await createActorWithAuth();
+        await loadTranslationsFromBackend(anonymousActor);
+        setLoading(false);
+      }
+    } finally {
+      checkAuthInFlight.current = false;
     }
   }
 
@@ -279,7 +289,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     <AuthContext.Provider value={getAuthContextValue()}>
       {children}
       <Dialog
-        open={mustCreateProfile}
+        open={mustCreateProfile && !loading}
         fullWidth
         maxWidth="sm"
         onClose={handleCancelProfile}
