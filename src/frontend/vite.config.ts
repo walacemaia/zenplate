@@ -1,4 +1,4 @@
-import type { ServerOptions } from 'vite';
+import type { Plugin, ServerOptions } from 'vite';
 
 import { execSync } from 'child_process';
 
@@ -20,31 +20,69 @@ function icpCli(args: string): string {
   return execSync(`icp ${args} -e ${ICP_ENVIRONMENT}`, { encoding: 'utf-8', stdio: 'pipe' }).trim();
 }
 
-// Cookie `ic_env` + proxy `/api` para simular, em `vite dev`, o que o
-// canister de assets já expõe em produção (ver src/lib/icp-agent.ts). Lê o
-// estado da rede local via `icp network status`/`icp canister status` — só
-// deve rodar quando `command === 'serve'` (nunca em build). Se a rede local
-// não estiver no ar, cai para a porta default do gateway (8000) sem cookie:
-// `safeGetCanisterEnv()` retorna `undefined` e o app segue com root key
-// default do @icp-sdk/core (funciona para builds locais sem backend, mas
-// chamadas de actor vão falhar até `icp network start -d` rodar).
-function getDevServerConfig(): ServerOptions {
+// Cookie `ic_env` para simular, em `vite dev`, o que o canister de assets já
+// expõe em produção (ver src/lib/icp-agent.ts).
+//
+// Achado real crítico: um `server.headers` estático (como fazíamos antes)
+// NÃO sobrevive a uma resposta `304 Not Modified` do Vite — o navegador manda
+// `If-None-Match` no documento, o Vite responde 304, e o `Set-Cookie` custom
+// some dessa resposta (confirmado com curl reproduzindo o 304). Resultado:
+// depois da primeira carga, `canisterId` fica `undefined` pra sempre — crash
+// síncrono e não capturado em `Actor.createActor`, sem nenhuma chamada de
+// rede nova, sintoma de tela de carregamento infinita. Corrigido com um
+// middleware de verdade via `configureServer`, que seta o cookie manualmente
+// e força `Cache-Control: no-store` na mesma resposta (impede o Vite de
+// decidir por um 304 nesse meio tempo).
+//
+// Só roda na navegação de página em si (`Sec-Fetch-Mode: navigate`, enviado
+// por navegadores modernos só em navegação de topo) — rodar os `icp` a cada
+// sub-recurso (JS/CSS servidos sem bundle em dev) derruba a performance
+// (~20s de carga em vez de instantânea, confirmado numa migração real).
+//
+// Ver .ai/zen/migracao-dfx-para-icp-cli.md (zen-skills, Fase 5) para o
+// achado completo, incluindo a parte de Service Worker/PWA abaixo.
+function icpDevEnvPlugin(): Plugin {
+  return {
+    name: 'icp-dev-env-cookie',
+    apply: 'serve',
+    configureServer(server) {
+      server.middlewares.use((req, res, next) => {
+        const isNavigation =
+          req.headers['sec-fetch-mode'] === 'navigate' ||
+          (req.headers.accept?.includes('text/html') ?? false);
+        if (!isNavigation) {
+          next();
+          return;
+        }
+        try {
+          const networkStatus = JSON.parse(icpCli('network status --json')) as NetworkStatus;
+          const canisterParams = CANISTER_NAMES.map(
+            (name) => `PUBLIC_CANISTER_ID:${name}=${icpCli(`canister status ${name} --id-only`)}`
+          ).join('&');
+          const cookieValue = `${canisterParams}&ic_root_key=${networkStatus.root_key}`;
+          res.setHeader('Set-Cookie', `ic_env=${encodeURIComponent(cookieValue)}; SameSite=Lax`);
+          res.setHeader('Cache-Control', 'no-store');
+        } catch {
+          console.warn(
+            '[vite.config] icp network indisponível — rode `icp network start -d` && `icp deploy` antes de `npm run dev` para autenticação e chamadas de actor funcionarem.'
+          );
+        }
+        next();
+      });
+    },
+  };
+}
+
+// Proxy `/api` — separado do cookie porque precisa valer pra toda requisição
+// `/api/*`, não só navegação. Sem `rewrite`: o gateway real do replica já
+// serve a API em `/api/v2|v3/...` (confirmado com curl direto no gateway
+// local) — o agent do @icp-sdk/core já constrói as URLs com esse prefixo,
+// então o proxy deve encaminhar o path como está, não removê-lo.
+function getDevServerProxy(): ServerOptions {
   try {
     const networkStatus = JSON.parse(icpCli('network status --json')) as NetworkStatus;
-    const canisterParams = CANISTER_NAMES.map(
-      (name) => `PUBLIC_CANISTER_ID:${name}=${icpCli(`canister status ${name} --id-only`)}`
-    ).join('&');
-    const cookieValue = `${canisterParams}&ic_root_key=${networkStatus.root_key}`;
-
     return {
-      headers: {
-        'Set-Cookie': `ic_env=${encodeURIComponent(cookieValue)}; SameSite=Lax`,
-      },
       proxy: {
-        // Sem `rewrite`: o gateway real do replica já serve a API em
-        // `/api/v2|v3/...` (confirmado com curl direto no gateway local) — o
-        // agent do @icp-sdk/core já constrói as URLs com esse prefixo, então
-        // o proxy deve encaminhar o path como está, não removê-lo.
         '/api': {
           target: networkStatus.api_url,
           changeOrigin: true,
@@ -52,9 +90,6 @@ function getDevServerConfig(): ServerOptions {
       },
     };
   } catch {
-    console.warn(
-      '[vite.config] icp network indisponível — rode `icp network start -d` && `icp deploy` antes de `npm run dev` para autenticação e chamadas de actor funcionarem.'
-    );
     return {
       proxy: {
         '/api': {
@@ -69,6 +104,7 @@ function getDevServerConfig(): ServerOptions {
 export default defineConfig(({ mode, command }) => ({
   plugins: [
     react(),
+    ...(command === 'serve' ? [icpDevEnvPlugin()] : []),
     icpBindgen({
       didFile: '../../.mops/.build/icp_app_backend.did',
       outDir: './src/generated',
@@ -82,9 +118,29 @@ export default defineConfig(({ mode, command }) => ({
       // IMPORTANTE: para funcionar também em npm run dev
       devOptions: {
         enabled: true,
+        // O modo dev do generateSW tem seu próprio fallback de navegação,
+        // separado do `workbox` abaixo — default intercepta a rota `/`
+        // mesmo com `navigateFallback: undefined` em produção. Sem isso, o
+        // cookie ic_env nunca chega em `vite dev` (ver Fase 5 da skill).
+        navigateFallbackAllowlist: [],
       },
       // Registramos o SW manualmente em src/utils/pwa-auto-update.ts (auto-reload).
       injectRegister: false,
+      workbox: {
+        // O cookie ic_env só chega numa resposta de rede real. Pré-cachear o
+        // index.html e servir a navegação via SW (default do generateSW)
+        // faz o cookie nunca ser atualizado. O fallback de SPA já é coberto
+        // pelo `_redirects` do canister (ver Fase 1), então não precisamos
+        // que o SW sirva o index.html — toda navegação vai sempre pra rede.
+        navigateFallback: undefined,
+        globIgnores: ['**/index.html'],
+        runtimeCaching: [
+          {
+            urlPattern: ({ request }) => request.mode === 'navigate',
+            handler: 'NetworkOnly',
+          },
+        ],
+      },
       manifest: {
         name: 'IcpApp',
         short_name: 'IcpApp',
@@ -138,7 +194,7 @@ export default defineConfig(({ mode, command }) => ({
         '**/generated/**', // Ignora a pasta gerada pelo bindgen
       ],
     },
-    ...(command === 'serve' ? getDevServerConfig() : {}),
+    ...(command === 'serve' ? getDevServerProxy() : {}),
   },
   resolve: {
     alias: [
