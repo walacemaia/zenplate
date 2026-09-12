@@ -1,0 +1,12 @@
+{
+  "$schemaVersion": 1,
+  "isCachedDbConsumer": true,
+  "isCachedDbConsumerReason": "mops.toml possui [dependencies] cacheddb",
+  "toolchain": "icp-cli",
+  "toolchainReason": "icp.yaml presente na raiz, dfx.json ausente",
+  "cachedDbVersion": "lockstep, sem versão fixada",
+  "cachedDbVersionStrategy": "lockstep-path",
+  "cachedDbVersionSource": "mops.toml:dependencies.cacheddb",
+  "mopsTomlHash": "sha256:25889301078448c802cc565bde273b0ebabfc59ff65b1e44c583683bf15acaa4",
+  "lastReportAt": "2026-09-12"
+}
