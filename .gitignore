@@ -31,3 +31,4 @@ dist/
 /.github/*
 !/.github/skills/
 !/.github/skills/**
+!/.github/copilot-instructions.md
