@@ -3,8 +3,6 @@ import type { RouteObject } from 'react-router';
 import { Outlet } from 'react-router';
 import { lazy, Suspense } from 'react';
 
-import { AuthSplitLayout } from 'src/layouts/auth-split';
-
 import { SplashScreen } from 'src/components/loading-screen';
 
 import { GuestGuard } from 'src/auth/guard';
@@ -23,13 +21,7 @@ const authIcp = {
       path: 'sign-in',
       element: (
         <GuestGuard>
-          <AuthSplitLayout
-            slotProps={{
-              section: { title: 'IcpApp' },
-            }}
-          >
-            <Icp.SignInPage />
-          </AuthSplitLayout>
+          <Icp.SignInPage />
         </GuestGuard>
       ),
     },
