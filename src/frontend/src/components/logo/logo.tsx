@@ -41,8 +41,8 @@ export const Logo = forwardRef<HTMLAnchorElement, LogoProps>((props, ref) => {
         width: '100%',
         height: '100%',
         backgroundColor: PRIMARY_MAIN,
-        mask: `url(${CONFIG.assetsDir}/logo/logo-single.svg) no-repeat center / contain`,
-        WebkitMask: `url(${CONFIG.assetsDir}/logo/logo-single.svg) no-repeat center / contain`,
+        mask: `url(${CONFIG.assetsDir}/logo/logo-symbol.svg) no-repeat center / contain`,
+        WebkitMask: `url(${CONFIG.assetsDir}/logo/logo-symbol.svg) no-repeat center / contain`,
       }}
     />
   );

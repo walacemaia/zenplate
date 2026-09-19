@@ -149,7 +149,7 @@ export default defineConfig(({ mode, command }) => ({
         scope: '/',
         display: 'standalone',
         background_color: '#ffffff',
-        theme_color: '#6b46c1',
+        theme_color: '#635BFF',
         orientation: 'portrait-primary',
         icons: [
           {
