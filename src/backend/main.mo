@@ -82,8 +82,9 @@ persistent actor icp_app_backend {
   };
 
   private func checkAuthenticated(caller : Principal) {
-    ignore caller;
-    //assert (Principal.toText(caller) != "2vxsx-fae");
+    if (Principal.isAnonymous(caller)) {
+      Runtime.trap("Operacao restrita a usuarios autenticados.");
+    };
   };
 
   // Verifica se o caller é um controlador (admin) do canister.
