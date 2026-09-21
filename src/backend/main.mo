@@ -71,16 +71,6 @@ persistent actor icp_app_backend {
   /*                               Authorization                              */
   /* ------------------------------------------------------------------------ */
 
-  /// Somente o dono do Profile pode alterá-lo. Um usuário não pode alterar sua role para #admin.
-  private func checkProfileAuthorization(profile : Profile, caller : Principal) {
-    if (profile.role == #admin) {
-      checkAdminAuthorization(caller);
-    };
-    if (profile.principal != caller) {
-      Runtime.trap("Usuário não autorizado a alterar profile: " # debug_show (caller));
-    };
-  };
-
   private func checkAuthenticated(caller : Principal) {
     if (Principal.isAnonymous(caller)) {
       Runtime.trap("Operacao restrita a usuarios autenticados.");
@@ -209,14 +199,39 @@ persistent actor icp_app_backend {
     services.profile.demote(profileId, getProfileOrTrap(caller).id);
   };
 
-  /// Atualiza um profile existente pelo ID.
+  /// Atualiza o profile do próprio caller.
+  ///
+  /// Só o registro do caller pode ser alterado: o `id` informado precisa ser o
+  /// do profile associado ao seu `principal`. Identidade e papel não são
+  /// editáveis por esta via — `principal` e `role` precisam vir iguais aos
+  /// persistidos; mudança de papel passa por `promoteToAdmin`/`demoteFromAdmin`.
   /// - Parâmetros
-  ///   - `profile` Dados do profile a serem atualizados.
-  /// (o ID deve ser válido e existente).
+  ///   - `profile` Nova versão do profile do caller.
   /// - Retorna: Um `Result.ok` com o objeto alterado em caso de sucesso ou um `Result.err`
   /// com um array contendo as mensagens dos erros ocorridos.
+  /// - Trap: caller sem profile, `id` pertencente a outro profile, ou tentativa
+  /// de alterar `principal` ou `role`.
   public shared ({ caller }) func updateMyProfile(profile : Profile) : async Result<Profile, [Text]> {
-    checkProfileAuthorization(profile, caller);
+
+    // O profile existente do caller.
+    let existingProfile = getProfileOrTrap(caller);
+
+    // Verifica se o profile do caller é o mesmo que está sendo atualizado.
+    if (existingProfile.id != profile.id) {
+      trap("Profile pertence a outro usuário.");
+    };
+
+    // Verifica se o principal do profile não foi alterado.
+    if (profile.principal != existingProfile.principal) {
+      trap("Profile não pode ser transferido para outro usuário.");
+    };
+
+    // O papel não é editável por esta via: ver promoteToAdmin/demoteFromAdmin.
+    if (profile.role != existingProfile.role) {
+      trap("Papel do profile não pode ser alterado por esta operação.");
+    };
+
+    // Atualiza o profile no serviço.
     let result = services.profile.update(profile);
     result;
   };
