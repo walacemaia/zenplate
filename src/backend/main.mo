@@ -71,19 +71,26 @@ persistent actor icp_app_backend {
   /*                               Authorization                              */
   /* ------------------------------------------------------------------------ */
 
-  /// Somente o dono do Profile pode alterá-lo. Um usuário não pode alterar sua role para #admin.
-  private func checkProfileAuthorization(profile : Profile, caller : Principal) {
-    if (profile.role == #admin) {
-      checkAdminAuthorization(caller);
-    };
-    if (profile.principal != caller) {
-      Runtime.trap("Usuário não autorizado a alterar profile: " # debug_show (caller));
-    };
-  };
-
   private func checkAuthenticated(caller : Principal) {
     if (Principal.isAnonymous(caller)) {
       Runtime.trap("Operacao restrita a usuarios autenticados.");
+    };
+  };
+
+  /// O primeiro Profile do canister nasce `#admin` (ver `ProfileDAO.addProfile`),
+  /// então só um controller pode criá-lo. Fecha a janela entre o deploy e o
+  /// cadastro do administrador legítimo — e também a que reabriria se uma
+  /// restauração interrompida deixasse o `profileDAO` vazio.
+  ///
+  /// A mensagem carrega o principal do caller de propósito: é ele que o
+  /// operador precisa informar em
+  /// `icp canister settings update <canister> --add-controller <principal>`.
+  private func checkFirstProfileBootstrap(caller : Principal) {
+    if (services.profile.isEmpty() and not Prim.isController(caller)) {
+      Runtime.trap(
+        "O primeiro profile do canister precisa ser criado por um controller. Principal a promover: "
+        # Principal.toText(caller)
+      );
     };
   };
 
@@ -182,15 +189,24 @@ persistent actor icp_app_backend {
     services.profile.isAdmin(caller);
   };
 
+  /// Indica se o canister já possui algum Profile. Usado pela tela de primeiro
+  /// acesso para distinguir o cadastro de gênese — que exige controller, ver
+  /// `checkFirstProfileBootstrap` — de um cadastro comum.
+  public query func hasProfiles() : async Bool {
+    not services.profile.isEmpty();
+  };
+
   /// Cria e persiste o profile do caller.
   public shared ({ caller }) func createMyProfile() : async Profile {
     checkAuthenticated(caller);
+    checkFirstProfileBootstrap(caller);
     services.profile.createForPrincipal(caller);
   };
 
   /// Adiciona um novo profile para o caller no banco de dados. O primeiro profile será uma administrador.
   public shared ({ caller }) func addMyProfile(profile : Profile) : async Result<Profile, [Text]> {
     checkAuthenticated(caller);
+    checkFirstProfileBootstrap(caller);
     services.profile.add(profile, caller);
   };
 
@@ -206,17 +222,49 @@ persistent actor icp_app_backend {
 
   public shared ({ caller }) func demoteFromAdmin(profileId : Nat) : async Result<Profile, [Text]> {
     checkAdminAuthorization(caller);
-    services.profile.demote(profileId, getProfileOrTrap(caller).id);
+    // O id do profile do caller, quando existe. Controllers do canister sao
+    // admins implicitos e podem nao ter profile — exigir um aqui travaria
+    // justamente a recuperacao de uma implantacao.
+    let callerProfileId = switch (services.profile.getByPrincipal(caller)) {
+      case (?p) ?p.id;
+      case null null;
+    };
+    services.profile.demote(profileId, callerProfileId);
   };
 
-  /// Atualiza um profile existente pelo ID.
+  /// Atualiza o profile do próprio caller.
+  ///
+  /// Só o registro do caller pode ser alterado: o `id` informado precisa ser o
+  /// do profile associado ao seu `principal`. Identidade e papel não são
+  /// editáveis por esta via — `principal` e `role` precisam vir iguais aos
+  /// persistidos; mudança de papel passa por `promoteToAdmin`/`demoteFromAdmin`.
   /// - Parâmetros
-  ///   - `profile` Dados do profile a serem atualizados.
-  /// (o ID deve ser válido e existente).
+  ///   - `profile` Nova versão do profile do caller.
   /// - Retorna: Um `Result.ok` com o objeto alterado em caso de sucesso ou um `Result.err`
   /// com um array contendo as mensagens dos erros ocorridos.
+  /// - Trap: caller sem profile, `id` pertencente a outro profile, ou tentativa
+  /// de alterar `principal` ou `role`.
   public shared ({ caller }) func updateMyProfile(profile : Profile) : async Result<Profile, [Text]> {
-    checkProfileAuthorization(profile, caller);
+
+    // O profile existente do caller.
+    let existingProfile = getProfileOrTrap(caller);
+
+    // Verifica se o profile do caller é o mesmo que está sendo atualizado.
+    if (existingProfile.id != profile.id) {
+      trap("Profile pertence a outro usuário.");
+    };
+
+    // Verifica se o principal do profile não foi alterado.
+    if (profile.principal != existingProfile.principal) {
+      trap("Profile não pode ser transferido para outro usuário.");
+    };
+
+    // O papel não é editável por esta via: ver promoteToAdmin/demoteFromAdmin.
+    if (profile.role != existingProfile.role) {
+      trap("Papel do profile não pode ser alterado por esta operação.");
+    };
+
+    // Atualiza o profile no serviço.
     let result = services.profile.update(profile);
     result;
   };

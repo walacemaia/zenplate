@@ -5,16 +5,21 @@ import type { Identity, ActorSubclass } from '@icp-sdk/core/agent';
 import { AuthClient } from '@icp-sdk/auth/client';
 import React, { useRef, useState, useEffect, useContext, createContext } from 'react';
 
+import Box from '@mui/material/Box';
+import Stack from '@mui/material/Stack';
+import Button from '@mui/material/Button';
 import Dialog from '@mui/material/Dialog';
+import Typography from '@mui/material/Typography';
 import DialogTitle from '@mui/material/DialogTitle';
+import DialogActions from '@mui/material/DialogActions';
 import DialogContent from '@mui/material/DialogContent';
 
 import { paths } from 'src/routes/paths';
 
 import { tsToIcp, BLANK_PROFILE, type ProfileType } from 'src/icpadapters/ProfileAdapter';
 
-import { SimpleProfileForm } from './simple-profile-form';
 import { createIcpAgent } from '../../../lib/icp-agent';
+import { SimpleProfileForm } from './simple-profile-form';
 import { canisterId, createActor } from '../../../lib/icp-app-backend-client';
 
 const AuthContext = createContext<any>(null);
@@ -48,6 +53,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Controle de criação de profile
   const [mustCreateProfile, setMustCreateProfile] = useState(false);
   const [pendingProfile, setPendingProfile] = useState<ProfileType | null>(null);
+  // Controle do primeiro acesso: base vazia e caller sem privilégio de controller
+  const [mustBootstrap, setMustBootstrap] = useState(false);
+  const [bootstrapPrincipal, setBootstrapPrincipal] = useState<string>('');
+  const [commandCopied, setCommandCopied] = useState(false);
+  // Container do diálogo de bootstrap: o fallback de cópia precisa inserir o
+  // textarea aqui dentro, e não no body, senão o focus trap do Dialog devolve o
+  // foco para o modal antes do select() valer e a cópia sai vazia.
+  const bootstrapContentRef = useRef<HTMLDivElement>(null);
 
   // Guard single-flight: React 18 StrictMode dispara useEffect([]) duas vezes em dev.
   const checkAuthInFlight = useRef(false);
@@ -253,15 +266,82 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const profile = await actor.getMyProfile();
     console.log('Profile loaded:', profile);
     if (!profile || profile.length === 0) {
-      // Prepara objeto para criação (usa mesmo form de edição)
       const principalText = id.getPrincipal().toText();
+
+      // Cadastro de gênese: com a base vazia, o primeiro profile nasce admin e
+      // por isso o backend exige controller (checkFirstProfileBootstrap). Sem
+      // profile, isAdmin() só é verdadeiro para controller. Em vez de abrir um
+      // formulário que seria recusado, orienta a promoção.
+      const [hasProfiles, isController] = await Promise.all([
+        actor.hasProfiles(),
+        actor.isAdmin(),
+      ]);
+      if (!hasProfiles && !isController) {
+        setBootstrapPrincipal(principalText);
+        setMustBootstrap(true);
+        setMustCreateProfile(false);
+        setPendingProfile(null);
+        return;
+      }
+
+      // Prepara objeto para criação (usa mesmo form de edição)
+      setMustBootstrap(false);
       setPendingProfile({ ...BLANK_PROFILE, principal: principalText });
       setMustCreateProfile(true);
     } else {
+      setMustBootstrap(false);
       setMustCreateProfile(false);
       setPendingProfile(null);
     }
   }
+
+  /// Reavalia o estado após o operador promover o principal a controller.
+  const handleBootstrapRecheck = async () => {
+    if (!backend || !identity) return;
+    await checkOrRequireProfile(backend, identity);
+  };
+
+  /// Comando de promoção, exibido e copiado a partir da mesma origem.
+  const bootstrapCommand = `icp canister settings update ${canisterId} --add-controller ${bootstrapPrincipal}`;
+
+  /// Copia o comando de promoção. O retorno é local: este provider está acima
+  /// do AlertProvider, então não há `useAlert` disponível aqui.
+  const handleCopyCommand = async () => {
+    const confirmCopy = () => {
+      setCommandCopied(true);
+      setTimeout(() => setCommandCopied(false), 2000);
+    };
+
+    // Caminho principal: Clipboard API. Exige contexto seguro, o que inclui
+    // localhost e 127.0.0.1 — portanto vale também em desenvolvimento.
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(bootstrapCommand);
+        confirmCopy();
+        return;
+      }
+    } catch (err) {
+      console.warn('Clipboard API indisponível, usando fallback:', err);
+    }
+
+    // Fallback: textarea dentro do diálogo. Anexá-lo ao body faria o focus trap
+    // do Dialog retomar o foco antes do select(), e a cópia sairia vazia.
+    try {
+      const container = bootstrapContentRef.current ?? document.body;
+      const textArea = document.createElement('textarea');
+      textArea.value = bootstrapCommand;
+      textArea.style.position = 'absolute';
+      textArea.style.opacity = '0';
+      textArea.setAttribute('readonly', '');
+      container.appendChild(textArea);
+      textArea.select();
+      const successful = document.execCommand('copy');
+      container.removeChild(textArea);
+      if (successful) confirmCopy();
+    } catch (err) {
+      console.error('Erro ao copiar comando:', err);
+    }
+  };
 
   const handleSaveProfile = async (data: ProfileType) => {
     if (!backend) return;
@@ -309,6 +389,70 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             />
           )}
         </DialogContent>
+      </Dialog>
+
+      {/* Primeiro acesso: base vazia e caller sem privilégio de controller.
+          O backend recusaria o cadastro (checkFirstProfileBootstrap), então a
+          tela orienta a promoção em vez de abrir o formulário. */}
+      <Dialog open={mustBootstrap && !loading} fullWidth maxWidth="sm" disableEscapeKeyDown>
+        <DialogTitle>
+          {(translations && translations['bootstrapTitle']) || 'First access'}
+        </DialogTitle>
+        <DialogContent ref={bootstrapContentRef}>
+          <Typography variant="body2" sx={{ mb: 3 }}>
+            {(translations && translations['bootstrapExplanation']) || ''}
+          </Typography>
+
+          <Typography variant="caption" color="text.secondary">
+            {(translations && translations['profilePrincipal']) || 'Principal'}
+          </Typography>
+          <Box
+            sx={{
+              p: 1.5,
+              mt: 0.5,
+              mb: 3,
+              borderRadius: 1,
+              bgcolor: 'action.hover',
+              fontFamily: 'monospace',
+              fontSize: 13,
+              wordBreak: 'break-all',
+            }}
+          >
+            {bootstrapPrincipal}
+          </Box>
+
+          <Typography variant="caption" color="text.secondary">
+            {(translations && translations['bootstrapCommand']) || ''}
+          </Typography>
+          <Box
+            sx={{
+              p: 1.5,
+              mt: 0.5,
+              borderRadius: 1,
+              bgcolor: 'action.hover',
+              fontFamily: 'monospace',
+              fontSize: 13,
+              wordBreak: 'break-all',
+            }}
+          >
+            {bootstrapCommand}
+          </Box>
+          <Button size="small" sx={{ mt: 1 }} onClick={handleCopyCommand}>
+            {commandCopied
+              ? (translations && translations['bootstrapCommandCopied']) || 'Command copied'
+              : (translations && translations['bootstrapCopyCommand']) || 'Copy command'}
+          </Button>
+        </DialogContent>
+        <DialogActions>
+          <Stack direction="row" spacing={1} sx={{ p: 1 }}>
+            <Button color="inherit" onClick={handleCancelProfile}>
+              {(translations && translations['cancel']) || 'Cancel'}
+            </Button>
+            <Button variant="contained" onClick={handleBootstrapRecheck}>
+              {(translations && translations['bootstrapRecheck']) || 'Check again'}
+            </Button>
+          </Stack>
+        </DialogActions>
       </Dialog>
     </AuthContext.Provider>
   );
