@@ -77,6 +77,23 @@ persistent actor icp_app_backend {
     };
   };
 
+  /// O primeiro Profile do canister nasce `#admin` (ver `ProfileDAO.addProfile`),
+  /// então só um controller pode criá-lo. Fecha a janela entre o deploy e o
+  /// cadastro do administrador legítimo — e também a que reabriria se uma
+  /// restauração interrompida deixasse o `profileDAO` vazio.
+  ///
+  /// A mensagem carrega o principal do caller de propósito: é ele que o
+  /// operador precisa informar em
+  /// `icp canister settings update <canister> --add-controller <principal>`.
+  private func checkFirstProfileBootstrap(caller : Principal) {
+    if (services.profile.isEmpty() and not Prim.isController(caller)) {
+      Runtime.trap(
+        "O primeiro profile do canister precisa ser criado por um controller. Principal a promover: "
+        # Principal.toText(caller)
+      );
+    };
+  };
+
   // Verifica se o caller é um controlador (admin) do canister.
   private func checkAdminAuthorization(caller : Principal) {
 
@@ -172,15 +189,24 @@ persistent actor icp_app_backend {
     services.profile.isAdmin(caller);
   };
 
+  /// Indica se o canister já possui algum Profile. Usado pela tela de primeiro
+  /// acesso para distinguir o cadastro de gênese — que exige controller, ver
+  /// `checkFirstProfileBootstrap` — de um cadastro comum.
+  public query func hasProfiles() : async Bool {
+    not services.profile.isEmpty();
+  };
+
   /// Cria e persiste o profile do caller.
   public shared ({ caller }) func createMyProfile() : async Profile {
     checkAuthenticated(caller);
+    checkFirstProfileBootstrap(caller);
     services.profile.createForPrincipal(caller);
   };
 
   /// Adiciona um novo profile para o caller no banco de dados. O primeiro profile será uma administrador.
   public shared ({ caller }) func addMyProfile(profile : Profile) : async Result<Profile, [Text]> {
     checkAuthenticated(caller);
+    checkFirstProfileBootstrap(caller);
     services.profile.add(profile, caller);
   };
 
@@ -196,7 +222,14 @@ persistent actor icp_app_backend {
 
   public shared ({ caller }) func demoteFromAdmin(profileId : Nat) : async Result<Profile, [Text]> {
     checkAdminAuthorization(caller);
-    services.profile.demote(profileId, getProfileOrTrap(caller).id);
+    // O id do profile do caller, quando existe. Controllers do canister sao
+    // admins implicitos e podem nao ter profile — exigir um aqui travaria
+    // justamente a recuperacao de uma implantacao.
+    let callerProfileId = switch (services.profile.getByPrincipal(caller)) {
+      case (?p) ?p.id;
+      case null null;
+    };
+    services.profile.demote(profileId, callerProfileId);
   };
 
   /// Atualiza o profile do próprio caller.

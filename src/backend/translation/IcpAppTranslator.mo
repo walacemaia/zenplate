@@ -36,6 +36,14 @@ module {
   public let profilePrincipal = "profilePrincipal";
   public let principalCopied = "principalCopied";
   public let profileAdminSelfDemotion = "profileAdminSelfDemotion";
+
+  // Primeiro acesso (bootstrap do administrador)
+  public let bootstrapTitle = "bootstrapTitle";
+  public let bootstrapExplanation = "bootstrapExplanation";
+  public let bootstrapCommand = "bootstrapCommand";
+  public let bootstrapRecheck = "bootstrapRecheck";
+  public let bootstrapCopyCommand = "bootstrapCopyCommand";
+  public let bootstrapCommandCopied = "bootstrapCommandCopied";
   public let profileEmailRequired = "profileEmailRequired";
   public let invalidEmailAddress = "invalidEmailAddress";
   public let profileUserNameRequired = "profileUserNameRequired";
@@ -96,6 +104,16 @@ module {
     add(map, profilePrincipal, "Principal");
     add(map, principalCopied, "Principal copiado para a área de transferência.");
     add(map, profileAdminSelfDemotion, "Administradores não podem se despromover.");
+    add(map, bootstrapTitle, "Primeiro acesso");
+    add(
+      map,
+      bootstrapExplanation,
+      "Este canister ainda não tem nenhum cadastro. O primeiro profile criado será o administrador do sistema e, por isso, só pode ser criado por um controller do canister. Promova o principal abaixo a controller e acesse novamente. Ele continuará sendo o operador: backup e restauração exigem essa condição.",
+    );
+    add(map, bootstrapCommand, "Execute no terminal:");
+    add(map, bootstrapRecheck, "Já promovi — verificar");
+    add(map, bootstrapCopyCommand, "Copiar comando");
+    add(map, bootstrapCommandCopied, "Comando copiado");
     add(map, profileEmailRequired, "E-mail é obrigatório.");
     add(map, invalidEmailAddress, "Endereço de e-mail inválido.");
     add(map, profileUserNameRequired, "Nome de usuário é obrigatório.");
@@ -148,6 +166,16 @@ module {
     add(map, profilePrincipal, "Principal");
     add(map, principalCopied, "Principal copied to clipboard.");
     add(map, profileAdminSelfDemotion, "Administrators cannot demote themselves.");
+    add(map, bootstrapTitle, "First access");
+    add(
+      map,
+      bootstrapExplanation,
+      "This canister has no profile yet. The first profile created becomes the system administrator and therefore can only be created by a canister controller. Promote the principal below to controller and sign in again. It stays the operator: backup and restore require that status.",
+    );
+    add(map, bootstrapCommand, "Run in your terminal:");
+    add(map, bootstrapRecheck, "I've promoted it — check again");
+    add(map, bootstrapCopyCommand, "Copy command");
+    add(map, bootstrapCommandCopied, "Command copied");
     add(map, profileEmailRequired, "E-mail is required.");
     add(map, invalidEmailAddress, "Invalid e-mail address.");
     add(map, profileUserNameRequired, "Username is required.");

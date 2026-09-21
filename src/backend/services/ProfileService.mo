@@ -49,6 +49,13 @@ module {
     // Operacoes thin pass-through ao DAO.
     // -----------------------------------------------------------------------
 
+    /// Indica se ainda nao existe nenhum Profile no canister. Usado pela
+    /// fronteira para exigir controller no cadastro de genese (ver
+    /// `checkFirstProfileBootstrap` em `main.mo`).
+    public func isEmpty() : Bool {
+      profileDAO.store.isEmpty();
+    };
+
     /// Profile por id.
     public func getById(id : Nat) : ?Profile {
       profileDAO.getProfile(id);
@@ -141,9 +148,17 @@ module {
     /// `callerProfileId` e usado apenas para a guarda de auto-rebaixamento
     /// (admin nao pode rebaixar a si mesmo). A guarda preserva o trap
     /// original via `IcpAppTranslator.profileAdminSelfDemotion`.
-    public func demote(profileId : Nat, callerProfileId : Nat) : Result<Profile, [Text]> {
-      if (profileId == callerProfileId) {
-        Runtime.trap(IcpAppTranslator.profileAdminSelfDemotion);
+    /// `callerProfileId` e opcional porque um controller do canister e admin
+    /// implicito e pode nao ter Profile proprio — caso da recuperacao de uma
+    /// implantacao. Sem Profile nao ha auto-rebaixamento possivel.
+    public func demote(profileId : Nat, callerProfileId : ?Nat) : Result<Profile, [Text]> {
+      switch (callerProfileId) {
+        case (?id) {
+          if (profileId == id) {
+            Runtime.trap(IcpAppTranslator.profileAdminSelfDemotion);
+          };
+        };
+        case null {};
       };
       switch (profileDAO.getProfile(profileId)) {
         case (?p) {
