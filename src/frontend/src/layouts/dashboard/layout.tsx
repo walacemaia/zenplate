@@ -26,8 +26,8 @@ import { HeaderSection } from '../core/header-section';
 import { LayoutSection } from '../core/layout-section';
 import { AccountDrawer } from '../components/account-drawer';
 import { SettingsButton } from '../components/settings-button';
-import { BackendVersionBadge } from '../components/backend-version-badge';
 import { dashboardLayoutVars, dashboardNavColorVars } from './css-vars';
+import { BackendVersionBadge } from '../components/backend-version-badge';
 
 import type { MainSectionProps } from '../core/main-section';
 import type { HeaderSectionProps } from '../core/header-section';
@@ -160,8 +160,7 @@ export function DashboardLayout({
   const renderMain = () => <MainSection {...slotProps?.main}>{children}</MainSection>;
 
   return (
-    <>
-      <LayoutSection
+    <LayoutSection
         /** **************************************
          * @Header
          *************************************** */
@@ -195,6 +194,5 @@ export function DashboardLayout({
       >
         {renderMain()}
       </LayoutSection>
-    </>
   );
 }
