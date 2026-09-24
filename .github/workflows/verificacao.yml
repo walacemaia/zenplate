@@ -11,7 +11,10 @@ on:
   # retorno só chegaria ao abrir o PR, com tudo acumulado de uma vez.
   #
   # Para pular deliberadamente, basta `[skip ci]` na mensagem do commit.
+  #
+  # `branches: ['**']` é explícito de propósito: `push:` sem valor não dispara.
   push:
+    branches: ['**']
 
   # O evento de PR verifica a **mescla com o branch principal**, não a ponta do
   # branch — pega conflito semântico que o push sozinho não veria. Limitado à
