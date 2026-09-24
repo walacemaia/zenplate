@@ -194,23 +194,23 @@ module {
 
     // Indexes -------------------------------------------------------------
 
-    private let userNameIdx = store.addIndex({
+    private let userNameIdx = store.addDiskIndex({
       name = "PROFILE_NAME_IDX";
       unique = true;
       uniquenessMessage = ?IcpAppTranslator.profileUserNameUniqueness;
       objectKey = func(obj : Profile) : [Text] {
         [obj.userName];
       };
-    });
+    }, 1);
 
-    private let userPrincipalIdx = store.addIndex({
+    private let userPrincipalIdx = store.addDiskIndex({
       name = "PROFILE_PRINCIPAL_IDX";
       unique = true;
       uniquenessMessage = ?IcpAppTranslator.profilePrincipalUniqueness;
       objectKey = func(obj : Profile) : [Text] {
         [Principal.toText(obj.principal)];
       };
-    });
+    }, 1);
 
     /* -------------------------------------------------------------------------- */
     /*                            Funções de atualização                          */
