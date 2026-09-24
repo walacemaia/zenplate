@@ -6,9 +6,21 @@
 name: verificacao
 
 on:
+  # Dispara em **todo push, em qualquer branch**, e não só onde há PR aberto.
+  # Sem isto, commits num branch sem PR não eram verificados por ninguém — o
+  # retorno só chegaria ao abrir o PR, com tudo acumulado de uma vez.
+  #
+  # Para pular deliberadamente, basta `[skip ci]` na mensagem do commit.
+  #
+  # `branches: ['**']` é explícito de propósito: `push:` sem valor não dispara.
   push:
-    branches: [main, master]
+    branches: ['**']
+
+  # O evento de PR verifica a **mescla com o branch principal**, não a ponta do
+  # branch — pega conflito semântico que o push sozinho não veria. Limitado à
+  # abertura e à reabertura, porque `synchronize` repetiria o que o push já fez.
   pull_request:
+    types: [opened, reopened, ready_for_review]
 
 # Empurrar vários commits seguidos no mesmo PR iniciava uma execução por push,
 # e as anteriores seguiam até o fim verificando código já substituído. Aqui a
@@ -72,8 +84,49 @@ jobs:
 
       # Compila o backend. Além de conferir tipos, é o que produz o `.did` de
       # que o frontend precisa para gerar as declarações.
+      # Guarda o par de impressões digitais da última verificação: a da
+      # interface do canister (`.did`) e a do frontend. A chave inclui o SHA
+      # para nunca acertar em cheio; `restore-keys` traz a mais recente do
+      # prefixo, que é o que permite comparar com a execução anterior.
+      - name: Restaurar marcador da última verificação
+        uses: actions/cache/restore@v4
+        with:
+          path: .ci-marcador
+          key: marcador-${{ runner.os }}-${{ github.sha }}
+          restore-keys: marcador-${{ runner.os }}-
+
       - name: Compilar o backend
         run: mops build
+
+      # Decide se o frontend precisa ser verificado.
+      #
+      # O `.did` é a fronteira real entre os dois lados: se a interface do
+      # canister não mudou **e** nenhum arquivo de frontend mudou, nada que o
+      # frontend verifica pode ter mudado. Commit só de Motoko que não altere a
+      # interface — a maioria, num trabalho de backend — pula ~95s de `npm ci`,
+      # build do vite e lint.
+      #
+      # Na primeira execução não há marcador, então roda tudo. É o lado certo
+      # para errar.
+      - name: Decidir se o frontend precisa rodar
+        id: decidir
+        env:
+          FRONT_AGORA: ${{ hashFiles('package.json', 'package-lock.json', 'src/*frontend/**') }}
+        run: |
+          DID_AGORA=$(cat .mops/.build/*.did | sha256sum | cut -d' ' -f1)
+          DID_ANTES=$(cat .ci-marcador/did 2>/dev/null || echo "")
+          FRONT_ANTES=$(cat .ci-marcador/front 2>/dev/null || echo "")
+          if [ "$DID_AGORA" = "$DID_ANTES" ] && [ "$FRONT_AGORA" = "$FRONT_ANTES" ]; then
+            echo "rodar=nao" >> "$GITHUB_OUTPUT"
+            echo "Interface do canister e frontend inalterados — pulando o frontend."
+          else
+            echo "rodar=sim" >> "$GITHUB_OUTPUT"
+            [ "$DID_AGORA" = "$DID_ANTES" ] || echo "A interface do canister mudou."
+            [ "$FRONT_AGORA" = "$FRONT_ANTES" ] || echo "Arquivos de frontend mudaram."
+          fi
+          mkdir -p .ci-marcador
+          printf '%s' "$DID_AGORA" > .ci-marcador/did
+          printf '%s' "$FRONT_AGORA" > .ci-marcador/front
 
       # `mops test` sai com erro quando não há arquivo de teste, então só roda
       # se houver. Serve para a suíte entrar aqui sozinha quando existir.
@@ -86,13 +139,24 @@ jobs:
           fi
 
       - name: Instalar dependências npm
+        if: steps.decidir.outputs.rodar == 'sim'
         run: npm ci
 
       # `build` do projeto é bindgen + tsc + vite build: gera as declarações a
       # partir do `.did` recém-compilado, confere os tipos do frontend contra
       # a interface real do canister e empacota.
       - name: Compilar o frontend
+        if: steps.decidir.outputs.rodar == 'sim'
         run: npm run build
 
       - name: Lint do frontend
+        if: steps.decidir.outputs.rodar == 'sim'
         run: npm run lint --workspaces --if-present
+
+      # Só grava o marcador quando tudo passou: uma execução vermelha não pode
+      # fazer a seguinte pular o que ainda não foi verificado com sucesso.
+      - name: Guardar marcador
+        uses: actions/cache/save@v4
+        with:
+          path: .ci-marcador
+          key: marcador-${{ runner.os }}-${{ github.sha }}
