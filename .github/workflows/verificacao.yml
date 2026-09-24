@@ -6,9 +6,18 @@
 name: verificacao
 
 on:
+  # Dispara em **todo push, em qualquer branch**, e não só onde há PR aberto.
+  # Sem isto, commits num branch sem PR não eram verificados por ninguém — o
+  # retorno só chegaria ao abrir o PR, com tudo acumulado de uma vez.
+  #
+  # Para pular deliberadamente, basta `[skip ci]` na mensagem do commit.
   push:
-    branches: [main, master]
+
+  # O evento de PR verifica a **mescla com o branch principal**, não a ponta do
+  # branch — pega conflito semântico que o push sozinho não veria. Limitado à
+  # abertura e à reabertura, porque `synchronize` repetiria o que o push já fez.
   pull_request:
+    types: [opened, reopened, ready_for_review]
 
 # Empurrar vários commits seguidos no mesmo PR iniciava uma execução por push,
 # e as anteriores seguiam até o fim verificando código já substituído. Aqui a
