@@ -12,6 +12,7 @@ import Blob "mo:core/Blob";
 import Nat16 "mo:core/Nat16";
 
 import DataAccessObject "mo:cacheddb/DataAccessObject";
+import IndexCodec "mo:cacheddb/index/IndexCodec";
 import IcpAppTranslator "../translation/IcpAppTranslator";
 import CoreTranslator "mo:cacheddb/translation/CoreTranslator";
 import Repository "mo:cacheddb/Repository";
@@ -135,6 +136,7 @@ module {
         Nat.toText(id);
       };
       keyComparator = Nat.compare;
+      keyCodec = IndexCodec.nat;
       valueBlobify = profileBlobify;
       repName = "PROFILE_DAO";
       natProperties;

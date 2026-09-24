@@ -10,6 +10,7 @@ import Blob "mo:core/Blob";
 import Nat16 "mo:core/Nat16";
 
 import DataAccessObject "mo:cacheddb/DataAccessObject";
+import IndexCodec "mo:cacheddb/index/IndexCodec";
 import CoreTranslator "mo:cacheddb/translation/CoreTranslator";
 import Repository "mo:cacheddb/Repository";
 import Logger "mo:cacheddb/utils/Logger";
@@ -110,6 +111,7 @@ module {
                 Nat.toText(id);
             };
             keyComparator = Nat.compare;
+            keyCodec = IndexCodec.nat;
             valueBlobify = imageBlobify;
             repName = "IMAGE_DAO";
             natProperties;

@@ -8,6 +8,7 @@ import Int "mo:core/Int";
 
 import Logger "mo:cacheddb/utils/Logger";
 import DataAccessObject "mo:cacheddb/DataAccessObject";
+import IndexCodec "mo:cacheddb/index/IndexCodec";
 import Repository "mo:cacheddb/Repository";
 
 module {
@@ -110,6 +111,7 @@ module {
         Nat.toText(id);
       };
       keyComparator = Nat.compare;
+      keyCodec = IndexCodec.nat;
       valueBlobify = configBlobify;
       repName = "CONFIGURATION_DAO";
       natProperties;
