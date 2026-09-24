@@ -4,12 +4,12 @@ import React from 'react';
 
 import Card from '@mui/material/Card';
 import { useTheme } from '@mui/material/styles';
+import BoltIcon from '@mui/icons-material/Bolt';
 import Typography from '@mui/material/Typography';
 import CloseIcon from '@mui/icons-material/Close';
 import SearchIcon from '@mui/icons-material/Search';
 import DeleteIcon from '@mui/icons-material/Delete';
 import ShieldIcon from '@mui/icons-material/Security';
-import BoltIcon from '@mui/icons-material/Bolt';
 import AddModeratorIcon from '@mui/icons-material/AddModerator';
 import RemoveModeratorIcon from '@mui/icons-material/RemoveModerator';
 import {

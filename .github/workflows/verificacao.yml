@@ -1,0 +1,98 @@
+# Roda a verificação a cada push e a cada pull request.
+#
+# Antes disto nada rodava sozinho: nenhum repositório do workspace tinha
+# workflow, e `.github/` era ignorado pelo `.gitignore` herdado do template do
+# icp-cli — qualquer workflow adicionado era engolido em silêncio.
+name: verificacao
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+# Empurrar vários commits seguidos no mesmo PR iniciava uma execução por push,
+# e as anteriores seguiam até o fim verificando código já substituído. Aqui a
+# execução superada é cancelada — não muda o que se verifica, só para de
+# verificar o que não é mais a ponta do branch.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verificar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # A `cacheddb` é dependência por **caminho local** (`../cacheddb/src/`),
+      # não pacote versionado: o mops resolve um diretório irmão que na CI não
+      # existe. Clonar aqui e ligar por link resolve, e tem efeito colateral
+      # desejável — o projeto passa a ser verificado contra o **master** da
+      # biblioteca, que é o que pega uma mudança de lá quebrando um projeto
+      # daqui.
+      #
+      # Exige um token de leitura da cacheddb no segredo `CACHEDDB_TOKEN`,
+      # porque o `GITHUB_TOKEN` padrão só enxerga este repositório.
+      - name: Buscar a cacheddb
+        uses: actions/checkout@v4
+        with:
+          repository: walacemaia/cacheddb
+          ref: master
+          token: ${{ secrets.CACHEDDB_TOKEN }}
+          path: .lib-cacheddb
+
+      # `actions/checkout` recusa caminho fora do workspace, então o clone vem
+      # para dentro e o link o expõe onde o mops.toml espera encontrá-lo.
+      - name: Ligar a cacheddb onde o mops a procura
+        run: ln -s "$GITHUB_WORKSPACE/.lib-cacheddb" "$GITHUB_WORKSPACE/../cacheddb"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      # As versões de `moc` e demais ferramentas vêm do `[toolchain]` do
+      # mops.toml, não daqui: é o mesmo pino da máquina de desenvolvimento, e é
+      # o que faz o verde da CI valer para quem roda localmente.
+      - name: Cache do mops
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/mops
+          key: mops-${{ runner.os }}-${{ hashFiles('mops.toml') }}
+          restore-keys: mops-${{ runner.os }}-
+
+      - name: Instalar mops
+        run: npm install -g ic-mops@2.14.1
+
+      - name: Preparar toolchain
+        run: mops toolchain init
+
+      - name: Instalar dependências Motoko
+        run: mops install
+
+      # Compila o backend. Além de conferir tipos, é o que produz o `.did` de
+      # que o frontend precisa para gerar as declarações.
+      - name: Compilar o backend
+        run: mops build
+
+      # `mops test` sai com erro quando não há arquivo de teste, então só roda
+      # se houver. Serve para a suíte entrar aqui sozinha quando existir.
+      - name: Rodar a suíte Motoko
+        run: |
+          if compgen -G "test/*.test.mo" > /dev/null; then
+            mops test --reporter verbose
+          else
+            echo "Sem arquivos de teste ainda — nada a rodar."
+          fi
+
+      - name: Instalar dependências npm
+        run: npm ci
+
+      # `build` do projeto é bindgen + tsc + vite build: gera as declarações a
+      # partir do `.did` recém-compilado, confere os tipos do frontend contra
+      # a interface real do canister e empacota.
+      - name: Compilar o frontend
+        run: npm run build
+
+      - name: Lint do frontend
+        run: npm run lint --workspaces --if-present

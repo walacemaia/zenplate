@@ -1,6 +1,3 @@
-import React from 'react';
-import JSZip from 'jszip';
-
 import type { ActorSubclass } from '@icp-sdk/core/agent';
 import type {
   _SERVICE,
@@ -8,6 +5,9 @@ import type {
   DaoAuditChunk,
   BackupBlobEntry,
 } from '@backend/icp_app_backend.did';
+
+import React from 'react';
+import JSZip from 'jszip';
 
 import Box from '@mui/material/Box';
 import Card from '@mui/material/Card';
@@ -32,7 +32,6 @@ import FormControlLabel from '@mui/material/FormControlLabel';
 import { useAlert } from 'src/utils/Alert';
 
 import { DashboardContent } from 'src/layouts/dashboard';
-
 import { executeBackendAction } from 'src/icpadapters/BackendUtils';
 
 import { useIcpContext } from 'src/auth/context/icp/icp-context-provider';
@@ -109,15 +108,18 @@ function bigintToBytes(n: bigint): Uint8Array {
   if (n === 0n) return new Uint8Array([0]);
   const out: number[] = [];
   let x = n;
+  /* eslint-disable no-bitwise -- conversão de bigint para bytes é aritmética de bits por definição */
   while (x > 0n) {
     out.unshift(Number(x & 0xffn));
     x >>= 8n;
   }
+  /* eslint-enable no-bitwise */
   return new Uint8Array(out);
 }
 
 function bytesToBigint(b: Uint8Array): bigint {
   let x = 0n;
+  /* eslint-disable-next-line no-bitwise -- idem, sentido inverso */
   for (const byte of b) x = (x << 8n) | BigInt(byte);
   return x;
 }
@@ -213,7 +215,7 @@ export default function Page() {
         appendLog(`Erro ao consultar estado inicial: ${e?.message ?? e}`);
       }
     })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [backend]);
 
   React.useEffect(() => {
@@ -299,10 +301,10 @@ export default function Page() {
         let orphanTotal = 0;
 
         // Loop de paginação até nextKey vazio.
-        // eslint-disable-next-line no-await-in-loop
+         
         for (;;) {
           chunkIdx += 1;
-          // eslint-disable-next-line no-await-in-loop
+           
           const result: { ok: DaoAuditChunk } | { err: string } = await actor.auditDaoChunk(
             daoId,
             fromKey,
@@ -351,7 +353,7 @@ export default function Page() {
           if (chunk.nextKey.length === 0) break;
           fromKey = chunk.nextKey;
           // Yield para permitir UI update entre chunks.
-          // eslint-disable-next-line no-await-in-loop
+           
           await new Promise((r) => {
             setTimeout(r, 0);
           });
@@ -430,7 +432,7 @@ export default function Page() {
     try {
       const expectedEntries = new Map<string, number>();
       for (const id of daoIds) {
-        // eslint-disable-next-line no-await-in-loop
+         
         const sizeOk = await executeBackendAction<bigint>(
           () => actor.getDaoSize(id),
           '',
@@ -468,7 +470,7 @@ export default function Page() {
 
         while (!exhausted) {
           let chunk: BackupChunk | null = null;
-          // eslint-disable-next-line no-await-in-loop
+           
           const ok = await executeBackendAction<BackupChunk>(
             () => actor.getBlobEntries(id, cursor, [BigInt(GET_CHUNK_BYTES)]),
             '',
@@ -507,7 +509,7 @@ export default function Page() {
         dataFolder.file(`${id}.bin`, fileBytes);
 
         let sequence = 0n;
-        // eslint-disable-next-line no-await-in-loop
+         
         const seqOk = await executeBackendAction<bigint>(
           () => actor.getDaoSequence(id),
           '',
@@ -648,7 +650,7 @@ export default function Page() {
           appendLog(`DAO "${id}": arquivo data/${id}.bin ausente, pulando.`);
           continue;
         }
-        // eslint-disable-next-line no-await-in-loop
+         
         const fileBuf = new Uint8Array(await daoFile.async('arraybuffer'));
         const records = parseDaoFile(fileBuf);
 
@@ -681,7 +683,7 @@ export default function Page() {
         for (const rec of records) {
           const recBytes = toU8(rec.payLoad).length;
           if (batch.length > 0 && batchBytes + recBytes > PUT_CHUNK_BYTES) {
-            // eslint-disable-next-line no-await-in-loop
+             
             const ok = await flush();
             if (!ok) {
               aborted = true;
@@ -692,7 +694,7 @@ export default function Page() {
           batchBytes += recBytes;
         }
         if (!aborted) {
-          // eslint-disable-next-line no-await-in-loop
+           
           const ok = await flush();
           if (!ok) aborted = true;
         }
@@ -703,7 +705,7 @@ export default function Page() {
         }
 
         appendLog(`DAO "${id}": dados restaurados, reconstruindo índices...`);
-        // eslint-disable-next-line no-await-in-loop
+         
         const reindexOk = await executeBackendAction<null>(
           () => actor.reindexDao(id),
           '',
@@ -735,7 +737,7 @@ export default function Page() {
           appendLog(`DAO "${id}": sequence invalida no manifesto (${expectedSequence}).`);
           continue;
         }
-        // eslint-disable-next-line no-await-in-loop
+         
         const seqOk = await executeBackendAction<null>(
           () => actor.setDaoSequence(id, sequenceValue),
           '',
@@ -925,8 +927,8 @@ export default function Page() {
                         color="text.secondary"
                         sx={{ mt: 1, display: 'block' }}
                       >
-                        Exibindo 200 de {auditReport.orphans.length} registros. Use "Baixar
-                        relatório JSON" para a lista completa.
+                        Exibindo 200 de {auditReport.orphans.length} registros. Use &quot;Baixar
+                        relatório JSON&quot; para a lista completa.
                       </Typography>
                     )}
                   </>

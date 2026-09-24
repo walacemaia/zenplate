@@ -32,3 +32,5 @@ dist/
 !/.github/skills/
 !/.github/skills/**
 !/.github/copilot-instructions.md
+!/.github/workflows/
+!/.github/workflows/**

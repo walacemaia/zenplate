@@ -1,5 +1,5 @@
-import type { ActorSubclass, ActorConfig, Agent } from '@icp-sdk/core/agent';
 import type { _SERVICE } from '@backend/icp_app_backend.did';
+import type { Agent, ActorConfig, ActorSubclass } from '@icp-sdk/core/agent';
 
 import { Actor } from '@icp-sdk/core/agent';
 import { safeGetCanisterEnv } from '@icp-sdk/core/agent/canister-env';

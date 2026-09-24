@@ -2,7 +2,7 @@
   "version": 3,
   "mopsTomlDepsHash": "ec7c31f56bc8ae48aa3efad162e9f998d5cc52767d99433223bfc90d7ce2fb5e",
   "deps": {
-    "cacheddb": "/home/wzm/icp-workspace/cacheddb/src",
+    "cacheddb": "../cacheddb/src",
     "core": "2.6.1"
   },
   "hashes": {

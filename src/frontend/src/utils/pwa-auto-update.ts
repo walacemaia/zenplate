@@ -6,6 +6,7 @@
  * Sem interacao do usuario: assim que o browser identifica que ha um SW novo
  * pronto, `updateSW(true)` chama skipWaiting e recarrega a pagina.
  */
+// eslint-disable-next-line import/no-unresolved -- módulo virtual gerado pelo vite-plugin-pwa
 import { registerSW } from 'virtual:pwa-register';
 
 const HOURLY_CHECK_MS = 60 * 60 * 1000;

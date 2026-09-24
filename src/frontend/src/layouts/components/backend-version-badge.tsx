@@ -1,13 +1,15 @@
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState, useEffect } from 'react';
 
 import Chip from '@mui/material/Chip';
 
-import { useIcpContext } from 'src/auth/context/icp/icp-context-provider';
-import {
-  BACKEND_VERSION_ACTIVE_CHECK_INTERVAL_MS,
-  BACKEND_VERSION_KEY,
-} from 'src/constants/backend-version';
 import { getBackendVersion } from 'src/utils/backend-version';
+
+import {
+  BACKEND_VERSION_KEY,
+  BACKEND_VERSION_ACTIVE_CHECK_INTERVAL_MS,
+} from 'src/constants/backend-version';
+
+import { useIcpContext } from 'src/auth/context/icp/icp-context-provider';
 
 type BadgeState = {
   version: string | null;

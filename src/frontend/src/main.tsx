@@ -8,8 +8,8 @@ import { Outlet, RouterProvider, createBrowserRouter } from 'react-router';
 import App from './app';
 import { routesSection } from './routes/sections';
 import { ErrorBoundary } from './routes/components';
-import { checkBackendVersionAndReloadIfNeeded } from './utils/backend-version';
 import { setupPwaAutoUpdate } from './utils/pwa-auto-update';
+import { checkBackendVersionAndReloadIfNeeded } from './utils/backend-version';
 
 // ----------------------------------------------------------------------
 

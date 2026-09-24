@@ -1,12 +1,14 @@
-import { useEffect, useRef } from 'react';
+import { useRef, useEffect } from 'react';
 
-import { useIcpContext } from 'src/auth/context/icp/icp-context-provider';
 import { useAlert } from 'src/utils/Alert';
 import {
-  checkBackendVersionAndReloadIfNeeded,
   consumeBackendVersionUpdateNotice,
+  checkBackendVersionAndReloadIfNeeded,
 } from 'src/utils/backend-version';
+
 import { BACKEND_VERSION_ACTIVE_CHECK_INTERVAL_MS } from 'src/constants/backend-version';
+
+import { useIcpContext } from 'src/auth/context/icp/icp-context-provider';
 
 export function BackendVersionWatcher() {
   const { backend } = useIcpContext();
