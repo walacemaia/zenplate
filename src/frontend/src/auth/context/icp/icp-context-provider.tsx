@@ -20,6 +20,7 @@ import { tsToIcp, BLANK_PROFILE, type ProfileType } from 'src/icpadapters/Profil
 
 import { createIcpAgent } from '../../../lib/icp-agent';
 import { SimpleProfileForm } from './simple-profile-form';
+import { derivationOrigin } from '../../../lib/derivation-origin';
 import { canisterId, createActor } from '../../../lib/icp-app-backend-client';
 
 const AuthContext = createContext<any>(null);
@@ -89,6 +90,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // a duracao da sessao seja governada exclusivamente por maxTimeToLive.
       const client = new AuthClient({
         identityProvider: identityProvider(),
+        // Principal derivado do canister de frontend, não do domínio: ver
+        // lib/derivation-origin.ts.
+        derivationOrigin: derivationOrigin(),
         windowOpenerFeatures: `toolbar=0,location=0,menubar=0,width=${width},height=${height},left=${left},top=${top}`,
         idleOptions: {
           disableIdle: true,
