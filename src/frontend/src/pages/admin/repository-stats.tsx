@@ -137,15 +137,6 @@ export default function Page() {
     return `${(ns / 1_000_000).toFixed(2)} ms`;
   }
 
-  async function handleClearCache() {
-    try {
-      await backend.clearCache();
-      await loadSeries();
-    } catch (e) {
-      console.error('Failed to clear cache:', e);
-    }
-  }
-
   async function handleWarmupCache() {
     try {
       await backend.warmupCache();
@@ -232,9 +223,6 @@ export default function Page() {
   return (
     <DashboardContent maxWidth="xl">
       <Box sx={{ mb: 2, display: 'flex', gap: 2, flexWrap: 'wrap' }}>
-        <Button variant="outlined" color="secondary" onClick={handleClearCache}>
-          {t('clearCache') || 'Clear Cache'}
-        </Button>
         <Button variant="contained" color="primary" onClick={handleWarmupCache}>
           {t('warmupCache') || 'Warmup Cache'}
         </Button>

@@ -406,17 +406,6 @@ persistent actor icp_app_backend {
     );
   };
 
-  public shared func clearCache() : async () {
-    profileEndpointSync<()>(
-      "clearCache",
-      func() : () {
-        logger.info(logContext, "Limpando caches...");
-        database.clearCaches();
-        logger.info(logContext, "Caches limpos.");
-      },
-    );
-  };
-
   /* -------------------------------------------------------------------------- */
   /*                            Backup / Restore                                */
   /* -------------------------------------------------------------------------- */
