@@ -10,7 +10,7 @@ canisters:
       type: "@dfinity/static-site@v0.3.3"
       configuration:
         build:
-          - npm install
+          - npm ci
           - npm run build --workspace=src/frontend
         dir: src/frontend/dist
 
