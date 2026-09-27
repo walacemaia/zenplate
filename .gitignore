@@ -34,3 +34,4 @@ dist/
 !/.github/copilot-instructions.md
 !/.github/workflows/
 !/.github/workflows/**
+!/.github/dependabot.yml

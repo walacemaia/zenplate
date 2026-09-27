@@ -1,0 +1,36 @@
+# Atualizações automáticas de dependências (Dependabot).
+#
+# Correções de segurança chegam assim que publicadas, num PR agrupado.
+# Atualizações de rotina esperam a quarentena (cooldown): a maioria dos
+# pacotes comprometidos é descoberta e retirada nos primeiros dias.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      timezone: America/Sao_Paulo
+    cooldown:
+      default-days: 7
+      semver-major-days: 30
+    open-pull-requests-limit: 5
+    groups:
+      seguranca:
+        applies-to: security-updates
+        patterns: ["*"]
+      menores:
+        update-types: [minor, patch]
+      # Versões principais num PR à parte: é no zenplate que se migram, para
+      # depois levar aos projetos derivados.
+      principais:
+        update-types: [major]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+      timezone: America/Sao_Paulo
+    groups:
+      actions:
+        patterns: ["*"]
