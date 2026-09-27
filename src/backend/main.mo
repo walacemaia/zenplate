@@ -406,6 +406,20 @@ persistent actor icp_app_backend {
     );
   };
 
+  /// Limpa o cache dos DAOs. Não destrói dados, mas cada chamada custa cycles
+  /// ao canister e degrada as leituras seguintes: por isso é só de admin.
+  public shared ({ caller }) func clearCache() : async () {
+    profileEndpointSync<()>(
+      "clearCache",
+      func() : () {
+        checkAdminAuthorization(caller);
+        logger.info(logContext, "Limpando caches...");
+        database.clearCaches();
+        logger.info(logContext, "Caches limpos.");
+      },
+    );
+  };
+
   /* -------------------------------------------------------------------------- */
   /*                            Backup / Restore                                */
   /* -------------------------------------------------------------------------- */
