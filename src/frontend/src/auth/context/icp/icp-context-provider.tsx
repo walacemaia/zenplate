@@ -25,6 +25,16 @@ import { sessionEndMs, guardSession, MAX_TIMEOUT_MS, markSessionExpired } from '
 
 const AuthContext = createContext<any>(null);
 
+/**
+ * Para onde ir depois do login: a página que a guarda de rotas guardou em
+ * `returnTo` — a sessão vencida continua de onde parou —; sem ela, o painel.
+ * Só caminho do próprio app: `//outro.site` e `/\outro.site` não passam.
+ */
+function afterLoginPath(): string {
+  const returnTo = new URLSearchParams(window.location.search).get('returnTo');
+  return returnTo && /^\/(?![/\\])/.test(returnTo) ? returnTo : paths.dashboard.home;
+}
+
 const SESSION_DURATION_NS = {
   standard: BigInt(8) * BigInt(3_600_000_000_000),
   rememberMe: BigInt(30) * BigInt(24) * BigInt(3_600_000_000_000),
@@ -186,8 +196,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       await client.signIn({ maxTimeToLive });
       console.log('Authentication Successful');
       await updateClient(client);
-      // Redireciona para /dashboard/home após login
-      window.location.href = paths.dashboard.home;
+      // Volta à página guardada pela guarda de rotas (ex.: sessão vencida);
+      // sem ela, o painel.
+      window.location.href = afterLoginPath();
     } catch (err) {
       console.error('Login Failed: ', err);
     }
