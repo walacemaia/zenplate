@@ -21,8 +21,19 @@ import { tsToIcp, BLANK_PROFILE, type ProfileType } from 'src/icpadapters/Profil
 import { createIcpAgent } from '../../../lib/icp-agent';
 import { SimpleProfileForm } from './simple-profile-form';
 import { canisterId, createActor } from '../../../lib/icp-app-backend-client';
+import { sessionEndMs, guardSession, MAX_TIMEOUT_MS, markSessionExpired } from './session-expiry';
 
 const AuthContext = createContext<any>(null);
+
+/**
+ * Para onde ir depois do login: a página que a guarda de rotas guardou em
+ * `returnTo` — a sessão vencida continua de onde parou —; sem ela, o painel.
+ * Só caminho do próprio app: `//outro.site` e `/\outro.site` não passam.
+ */
+function afterLoginPath(): string {
+  const returnTo = new URLSearchParams(window.location.search).get('returnTo');
+  return returnTo && /^\/(?![/\\])/.test(returnTo) ? returnTo : paths.dashboard.home;
+}
 
 const SESSION_DURATION_NS = {
   standard: BigInt(8) * BigInt(3_600_000_000_000),
@@ -65,6 +76,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Guard single-flight: React 18 StrictMode dispara useEffect([]) duas vezes em dev.
   const checkAuthInFlight = useRef(false);
 
+  // Fim da sessão (session-expiry.ts). Refs, e não estado: o relógio e o ator
+  // chamam `expireSession` de closures criadas em renders anteriores.
+  const authClientRef = useRef<AuthClient | null>(null);
+  const identityRef = useRef<Identity | null>(null);
+  const expiryTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const expiring = useRef(false);
+
+  // Aba suspensa ou máquina dormindo atrasam o relógio: ao voltar a ficar
+  // visível, a página confere o vencimento de novo.
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState === 'visible' && identityRef.current) {
+        scheduleExpiry(identityRef.current);
+      }
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      document.removeEventListener('visibilitychange', onVisible);
+      clearTimeout(expiryTimer.current);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- registrado uma vez; scheduleExpiry só lê refs
+  }, []);
+
   /**
    * Na carga das páginas, cria o AuthClient e verifica se o usuário está autenticado.
    */
@@ -96,6 +130,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         },
       });
       setAuthClient(client);
+      authClientRef.current = client;
       return client;
     }
     return authClient;
@@ -129,6 +164,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
    */
   async function updateClient(client: AuthClient) {
     const id = await client.getIdentity();
+    // Delegação já vencida (ex.: aba restaurada no dia seguinte): direto ao login.
+    const end = sessionEndMs(id);
+    if (end !== null && end <= Date.now()) {
+      await expireSession();
+      setLoading(false);
+      return;
+    }
+    identityRef.current = id;
+    scheduleExpiry(id);
     setIdentity(id);
     setAuthenticated(true);
     const actor = await createActorWithAuth(id);
@@ -152,8 +196,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       await client.signIn({ maxTimeToLive });
       console.log('Authentication Successful');
       await updateClient(client);
-      // Redireciona para /dashboard/home após login
-      window.location.href = paths.dashboard.home;
+      // Volta à página guardada pela guarda de rotas (ex.: sessão vencida);
+      // sem ela, o painel.
+      window.location.href = afterLoginPath();
     } catch (err) {
       console.error('Login Failed: ', err);
     }
@@ -163,10 +208,57 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
    * Realiza o logout, limpando o estado do client.
    */
   async function logout() {
-    if (authClient) {
-      await authClient.signOut();
+    const client = authClientRef.current ?? authClient;
+    if (client) {
+      await client.signOut();
     }
     resetAuth();
+  }
+
+  /**
+   * Agenda o encerramento da sessão para o fim da delegação. Sessões mais
+   * longas que o limite do `setTimeout` reagendam ao acordar.
+   */
+  function scheduleExpiry(id: Identity) {
+    clearTimeout(expiryTimer.current);
+    const end = sessionEndMs(id);
+    if (end === null) return;
+    const wait = end - Date.now();
+    if (wait <= 0) {
+      expireSession();
+      return;
+    }
+    expiryTimer.current = setTimeout(() => scheduleExpiry(id), Math.min(wait, MAX_TIMEOUT_MS));
+  }
+
+  /**
+   * Sessão vencida: encerra como um logout e marca o motivo, para a tela de
+   * login avisar. A guarda de rotas leva ao login, guardando a página de
+   * volta — o que o Ctrl-F5 fazia à mão.
+   */
+  async function expireSession() {
+    if (expiring.current) return;
+    expiring.current = true;
+    try {
+      markSessionExpired();
+      await logout();
+    } catch (err) {
+      console.error('Erro ao encerrar a sessão vencida:', err);
+      resetAuth();
+    } finally {
+      expiring.current = false;
+    }
+  }
+
+  /** Mensagem da chamada recusada por sessão vencida, no idioma carregado. */
+  function sessionExpiredMessage(): string {
+    try {
+      const stored = JSON.parse(localStorage.getItem(TRANSLATION_KEY) ?? '{}');
+      if (stored.sessionExpired) return stored.sessionExpired;
+    } catch {
+      // segue para o texto padrão
+    }
+    return 'Sua sessão expirou. Entre novamente para continuar.';
   }
 
   /**
@@ -174,6 +266,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
    */
   function resetAuth() {
     console.log('resetAuth');
+    clearTimeout(expiryTimer.current);
+    identityRef.current = null;
+    authClientRef.current = null;
     setAuthenticated(false);
     setIdentity(null);
     setBackend(null);
@@ -187,7 +282,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
    */
   async function createActorWithAuth(id?: Identity): Promise<ActorSubclass<_SERVICE>> {
     const agent = await createIcpAgent(id);
-    return createActor(canisterId, { agent });
+    const actor = createActor(canisterId, { agent });
+    // Ator anônimo não tem delegação a vencer.
+    return id ? guardSession(actor, expireSession, sessionExpiredMessage) : actor;
   }
 
   /**
@@ -272,10 +369,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // por isso o backend exige controller (checkFirstProfileBootstrap). Sem
       // profile, isAdmin() só é verdadeiro para controller. Em vez de abrir um
       // formulário que seria recusado, orienta a promoção.
-      const [hasProfiles, isController] = await Promise.all([
-        actor.hasProfiles(),
-        actor.isAdmin(),
-      ]);
+      const [hasProfiles, isController] = await Promise.all([actor.hasProfiles(), actor.isAdmin()]);
       if (!hasProfiles && !isController) {
         setBootstrapPrincipal(principalText);
         setMustBootstrap(true);
