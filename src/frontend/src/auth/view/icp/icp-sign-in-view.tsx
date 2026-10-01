@@ -16,12 +16,13 @@
  * layout — é ela que define o padrão.
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 import { useTheme } from '@mui/material/styles';
 import LoginIcon from '@mui/icons-material/Login';
 import {
   Box,
+  Alert,
   Paper,
   Stack,
   Button,
@@ -34,6 +35,7 @@ import {
 import { CONFIG } from 'src/global-config';
 
 import { useIcpContext } from 'src/auth/context/icp/icp-context-provider';
+import { wasSessionExpired, clearSessionExpired } from 'src/auth/context/icp/session-expiry';
 
 // ----------------------------------------------------------------------
 // PALETTE — os únicos valores que variam entre aplicações do padrão.
@@ -70,6 +72,7 @@ const TEXTS = {
   rememberMe: 'Lembrar de mim neste dispositivo',
   button: 'Entrar com Internet Identity',
   footnote: 'O acesso é feito por Internet Identity; nenhuma senha é armazenada aqui.',
+  sessionExpired: 'Sua sessão expirou. Entre novamente para continuar de onde parou.',
   heroAlt: `Ilustração de entrada ${CONFIG.appName}`,
   logoAlt: `Marca ${CONFIG.appName}`,
 };
@@ -96,6 +99,11 @@ export function IcpSignInView() {
   const { login } = useIcpContext();
 
   const [isLoggingIn, setIsLoggingIn] = useState(false);
+  // Chegou aqui porque a sessão venceu (session-expiry.ts): avisa uma vez.
+  const [sessionExpired] = useState(wasSessionExpired);
+  useEffect(() => {
+    clearSessionExpired();
+  }, []);
   const [rememberMe, setRememberMe] = useState<boolean>(() => {
     if (typeof window === 'undefined') return false;
     return window.localStorage.getItem(REMEMBER_ME_STORAGE_KEY) === 'true';
@@ -188,6 +196,7 @@ export function IcpSignInView() {
             </Typography>
 
             <Stack sx={{ gap: 1.7, maxWidth: 430 }}>
+              {sessionExpired && <Alert severity="info">{TEXTS.sessionExpired}</Alert>}
               <FormControlLabel
                 sx={{
                   ml: 0,
