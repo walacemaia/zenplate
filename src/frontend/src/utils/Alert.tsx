@@ -1,7 +1,7 @@
 import type { AlertColor, SnackbarOrigin } from '@mui/material';
 
 import { varAlpha } from 'minimal-shared/utils';
-import { useState, useContext, createContext } from 'react';
+import { useMemo, useState, useContext, useCallback, createContext } from 'react';
 
 import InfoRoundedIcon from '@mui/icons-material/InfoRounded';
 import ErrorRoundedIcon from '@mui/icons-material/ErrorRounded';
@@ -38,7 +38,11 @@ export function AlertProvider({ children }: { children: React.ReactNode }) {
     horizontal: 'center' as SnackbarOrigin['horizontal'],
   });
 
-  const showAlert = (message: string, options: AlertOptions = {}) => {
+  // As funções expostas precisam de identidade estável: as telas as colocam
+  // nas dependências de `useCallback`/`useEffect` da carga, e uma função nova
+  // a cada render do provider (ao abrir ou fechar o aviso) dispararia a
+  // consulta outra vez.
+  const showAlert = useCallback((message: string, options: AlertOptions = {}) => {
     setAlert({
       message,
       severity: options.severity || 'info',
@@ -47,39 +51,58 @@ export function AlertProvider({ children }: { children: React.ReactNode }) {
       vertical: options.vertical || 'bottom',
       horizontal: options.horizontal || 'center',
     });
-  };
+  }, []);
 
   // 🔹 Criando atalhos com configurações predefinidas
-  const showError = (message: string) => {
-    showAlert(message, {
-      severity: 'error',
-      duration: 10000,
-      vertical: 'top',
-      horizontal: 'center',
-    });
-  };
+  const showError = useCallback(
+    (message: string) => {
+      showAlert(message, {
+        severity: 'error',
+        duration: 10000,
+        vertical: 'top',
+        horizontal: 'center',
+      });
+    },
+    [showAlert]
+  );
 
-  const showSuccess = (message: string) => {
-    showAlert(message, {
-      severity: 'success',
-      duration: 3000,
-      vertical: 'bottom',
-      horizontal: 'center',
-    });
-  };
+  const showSuccess = useCallback(
+    (message: string) => {
+      showAlert(message, {
+        severity: 'success',
+        duration: 3000,
+        vertical: 'bottom',
+        horizontal: 'center',
+      });
+    },
+    [showAlert]
+  );
 
-  const showWarning = (message: string) => {
-    showAlert(message, {
-      severity: 'warning',
-      duration: 5000,
-      vertical: 'top',
-      horizontal: 'right',
-    });
-  };
+  const showWarning = useCallback(
+    (message: string) => {
+      showAlert(message, {
+        severity: 'warning',
+        duration: 5000,
+        vertical: 'top',
+        horizontal: 'right',
+      });
+    },
+    [showAlert]
+  );
 
-  const showInfo = (message: string) => {
-    showAlert(message, { severity: 'info', duration: 4000, vertical: 'top', horizontal: 'left' });
-  };
+  const showInfo = useCallback(
+    (message: string) => {
+      showAlert(message, { severity: 'info', duration: 4000, vertical: 'top', horizontal: 'left' });
+    },
+    [showAlert]
+  );
+
+  const contextValue = useMemo(
+    () => ({ showAlert, showError, showSuccess, showWarning, showInfo }),
+    [showAlert, showError, showSuccess, showWarning, showInfo]
+  );
+
+  const closeAlert = useCallback(() => setAlert((current) => ({ ...current, open: false })), []);
 
   const severityIconMap: Record<AlertColor, React.ReactNode> = {
     success: <CheckCircleRoundedIcon fontSize="inherit" />,
@@ -117,18 +140,18 @@ export function AlertProvider({ children }: { children: React.ReactNode }) {
     theme.palette.mode === 'dark' ? alphaBySeverity(0.14) : alphaBySeverity(0.08);
 
   return (
-    <AlertContext.Provider value={{ showAlert, showError, showSuccess, showWarning, showInfo }}>
+    <AlertContext.Provider value={contextValue}>
       {children}
       <Snackbar
         open={alert.open}
         autoHideDuration={alert.duration}
-        onClose={() => setAlert({ ...alert, open: false })}
+        onClose={closeAlert}
         anchorOrigin={{ vertical: alert.vertical, horizontal: alert.horizontal }}
       >
         <Alert
           severity={alert.severity}
           icon={severityIconMap[alert.severity]}
-          onClose={() => setAlert({ ...alert, open: false })}
+          onClose={closeAlert}
           sx={{
             width: '100%',
             minWidth: { xs: 280, sm: 360 },
