@@ -34,7 +34,7 @@ jobs:
   verificar:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # A `cacheddb` é dependência por **caminho local** (`../cacheddb/src/`),
       # não pacote versionado: o mops resolve um diretório irmão que na CI não
@@ -46,7 +46,7 @@ jobs:
       # Exige um token de leitura da cacheddb no segredo `CACHEDDB_TOKEN`,
       # porque o `GITHUB_TOKEN` padrão só enxerga este repositório.
       - name: Buscar a cacheddb
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           repository: walacemaia/cacheddb
           ref: master
@@ -58,7 +58,7 @@ jobs:
       - name: Ligar a cacheddb onde o mops a procura
         run: ln -s "$GITHUB_WORKSPACE/.lib-cacheddb" "$GITHUB_WORKSPACE/../cacheddb"
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: "22"
           cache: npm
@@ -67,7 +67,7 @@ jobs:
       # mops.toml, não daqui: é o mesmo pino da máquina de desenvolvimento, e é
       # o que faz o verde da CI valer para quem roda localmente.
       - name: Cache do mops
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ~/.cache/mops
           key: mops-${{ runner.os }}-${{ hashFiles('mops.toml') }}
@@ -89,7 +89,7 @@ jobs:
       # para nunca acertar em cheio; `restore-keys` traz a mais recente do
       # prefixo, que é o que permite comparar com a execução anterior.
       - name: Restaurar marcador da última verificação
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@v6
         with:
           path: .ci-marcador
           key: marcador-${{ runner.os }}-${{ github.sha }}
@@ -156,7 +156,7 @@ jobs:
       # Só grava o marcador quando tudo passou: uma execução vermelha não pode
       # fazer a seguinte pular o que ainda não foi verificado com sucesso.
       - name: Guardar marcador
-        uses: actions/cache/save@v4
+        uses: actions/cache/save@v6
         with:
           path: .ci-marcador
           key: marcador-${{ runner.os }}-${{ github.sha }}
