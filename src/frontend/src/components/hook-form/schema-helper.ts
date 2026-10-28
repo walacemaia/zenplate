@@ -18,8 +18,10 @@ export const schemaHelper = {
   phoneNumber: (props?: { message?: MessageMapProps; isValid?: (text: string) => boolean }) =>
     zod
       .string({
-        required_error: props?.message?.required ?? 'Phone number is required!',
-        invalid_type_error: props?.message?.invalid_type ?? 'Invalid phone number!',
+        error: (issue) =>
+          issue.input === undefined
+            ? (props?.message?.required ?? 'Phone number is required!')
+            : (props?.message?.invalid_type ?? 'Invalid phone number!'),
       })
       .min(1, { message: props?.message?.required ?? 'Phone number is required!' })
       .refine((data) => props?.isValid?.(data), {
@@ -48,14 +50,14 @@ export const schemaHelper = {
 
         if (!stringToDate.safeParse(date).success) {
           ctx.addIssue({
-            code: zod.ZodIssueCode.invalid_date,
+            code: zod.ZodIssueCode.custom,
             message: props?.message?.invalid_type ?? 'Invalid Date!!',
           });
         }
 
         return date;
       })
-      .pipe(zod.union([zod.number(), zod.string(), zod.date(), zod.null()])),
+      .pipe(zod.union([zod.string(), zod.null()])),
   /**
    * Editor
    * defaultValue === '' | <p></p>
@@ -83,7 +85,7 @@ export const schemaHelper = {
    * Apply for checkbox, switch...
    */
   boolean: (props?: { message: string }) =>
-    zod.boolean({ coerce: true }).refine((val) => val === true, {
+    zod.coerce.boolean().refine((val) => val === true, {
       message: props?.message ?? 'Field is required!',
     }),
   /**
