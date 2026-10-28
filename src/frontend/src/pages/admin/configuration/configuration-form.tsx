@@ -22,6 +22,7 @@ import { useIcpContext } from 'src/auth/context/icp/icp-context-provider';
 /* -------------------------------------------------------------------------- */
 /*                            Esquema de validação                            */
 /* -------------------------------------------------------------------------- */
+// Os campos numéricos convertem no onChange, então o esquema já recebe bigint.
 const toBigInt = (v: unknown) => {
   if (typeof v === 'bigint') return v;
   if (typeof v === 'number') return BigInt(v);
@@ -69,22 +70,16 @@ export default function ConfigurationForm({
         logLevel: zod
           .string()
           .min(1, { message: t('configurationLogLevelRequired') || 'Nível de log é obrigatório.' }),
-        maxProfileImageSize: zod.preprocess(
-          toBigInt,
-          zod.bigint().refine((v) => v > 0n, {
-            message:
-              t('configurationMaxProfileImageSizePositive') ||
-              'Tamanho máximo da imagem de perfil deve ser positivo.',
-          })
-        ),
-        eventsForCacheWarmup: zod.preprocess(
-          toBigInt,
-          zod.bigint().refine((v) => v > 0n, {
-            message:
-              t('configurationEventsForCacheWarmupPositive') ||
-              'Eventos para aquecimento de cache deve ser positivo.',
-          })
-        ),
+        maxProfileImageSize: zod.bigint().refine((v) => v > 0n, {
+          message:
+            t('configurationMaxProfileImageSizePositive') ||
+            'Tamanho máximo da imagem de perfil deve ser positivo.',
+        }),
+        eventsForCacheWarmup: zod.bigint().refine((v) => v > 0n, {
+          message:
+            t('configurationEventsForCacheWarmupPositive') ||
+            'Eventos para aquecimento de cache deve ser positivo.',
+        }),
       }),
     [t]
   );
